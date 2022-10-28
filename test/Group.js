@@ -10,24 +10,21 @@ beforeEach(async function () {
 })
 
 
-describe("Group", async () => {
-    it("Create Round", async () => {
+describe("Trade", async () => {
+    it("Start", async () => {
         const accounts = await ethers.getSigners();
         for (let i = 0; i < accounts.length; i++) {
             await group.connect(accounts[i]).Enter({ value: deposit })
         }
-        await group.connect(accounts[0]).StartRound()
+        await group.StartRound()
+
+        let timeF = BigInt(123123123)
+        let timeS = BigInt(1231231231212)
+        let price = 100
+        let value = 10
+        await group.CreateLot(timeF, timeS, price, value)
+
+        await group.connect(accounts[1]).BuyLot(120)
+
     })
-
-    // it("Create lot", async () => {
-    //     const accounts = await ethers.getSigners();
-    //     let timeF = BigInt("1231231231231")
-    //     let timeS = BigInt("1231231231231121")
-    //     let price = BigInt("100")
-    //     let val = BigInt("10")
-    //     await group.connect(accounts[0]).CreateLot(timeF, timeS, price, val)
-    //     let snap = await group.GetSnap()
-    //     console.log(snap)
-    // })
-
-});
+})

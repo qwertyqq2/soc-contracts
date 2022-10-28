@@ -87,11 +87,8 @@ contract Round {
 
         timeCreation = block.timestamp;
     
-        for (i = 0; i < 100; i++) {
-            new Lot(i);
-        }
-
-        Lot lot = new Lot(i + 1);
+   
+        Lot lot = new Lot(1);
         lotAddr = address(lot);
         console.log("Round started");
     }

@@ -111,11 +111,6 @@ contract Group {
         return round.GetSnap();
     }
 
-    function GetBalRound() public view returns (uint256) {
-        IRound round = IRound(roundAddr);
-        return round.GetBalance();
-    }
-
     function GetRound() public view returns(address){
         return roundAddr;
     }

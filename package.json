@@ -11,5 +11,8 @@
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^2.0.0",
     "hardhat": "^2.12.1"
+  },
+  "dependencies": {
+    "@openzeppelin/hardhat-upgrades": "^1.21.0"
   }
 }

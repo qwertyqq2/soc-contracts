@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./IRound.sol";
 import "./IPlayer.sol";
+import "hardhat/console.sol";
 
 
 contract Lot {
@@ -105,6 +106,7 @@ contract Lot {
                 abi.encodePacked(timeFirst, timeSecond, owner, price, value)
             )
         );
+        console.log("New lot owner: ", owner, " new lot price: ", price);
     }
 
 
@@ -116,6 +118,7 @@ contract Lot {
         if (newPrice <= 0) {
             exist = false;
         }
+        console.log("New lot owner: ", sender, " new lot price: ", newPrice);
     }
 
 

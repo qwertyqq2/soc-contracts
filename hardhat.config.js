@@ -1,13 +1,25 @@
 require("@nomicfoundation/hardhat-toolbox");
+require('solidity-coverage')
+require('@openzeppelin/hardhat-upgrades');
+
 
 module.exports = {
-  solidity: "0.8.17",
-  settings: {
-    optimizer: {
-      enabled: true,
-      runs: 200,
-      details: { yul: false },
+  solidity: {
+    version: '0.8.13',
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 100000000,
+      },
     },
   },
-
-};
+  networks: {
+    hardhat: {
+      allowUnlimitedContractSize: true,
+    }
+  },
+  gasReporter: {
+    enabled: true,
+    currency: 'USD',
+  },
+}

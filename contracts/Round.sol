@@ -63,7 +63,6 @@ contract Round {
         pendingPlayers[_sender] += _value;
         balance += _value;
         pendingAddress.push(_sender);
-        console.log("Enter player: ", _sender, _value);
     }
 
     modifier onlyOwner() {
@@ -90,7 +89,6 @@ contract Round {
    
         Lot lot = new Lot(1);
         lotAddr = address(lot);
-        console.log("Round started");
     }
 
     function NewLot(
@@ -109,26 +107,37 @@ contract Round {
         lot.Buy(sender, price);
     }
 
-    function Correct(address[] memory _senders, uint256[] memory _prices, uint256 _snapPoint, address _playerAddr) public onlyGroup{
-
+    function VerifyFull(
+    address[] memory _owners, 
+    uint256[] memory _prices,
+    uint256 _timeFirst, 
+    uint256 _timeSecond, 
+    uint256 _value
+    ) public view {
         ILot lot = ILot(lotAddr);
-
-        (uint idx, bool flag) = lot.Verify(_senders, _prices, _snapPoint, _playerAddr);
-
-        if(!flag){
-            if(idx == 101){
-                lot.Return(_snapPoint);
-                //Наказание//
-                //...///
-            }
-            else if(idx == 102){
-                lot.Return(_snapPoint);
-                //Наказание//
-                //...///
-            }
-        }
+        lot.VerifyFull(_owners, _prices, _timeFirst, _timeSecond, _value);
     }
 
+
+    function VerifyPart(
+        address[] memory _owners, 
+        uint256[] memory _prices, 
+        uint256 _snap
+    ) public view{
+        ILot lot = ILot(lotAddr);
+        lot.VerifyPart(_owners, _prices, _snap);
+    }
+
+
+    function CorrectPart(
+        address[] memory _owners, 
+        uint256[] memory _prices, 
+        uint256 _snap
+    ) public{
+        ILot lot = ILot(lotAddr);
+        lot.CorrectPart(_owners, _prices, _snap);
+    }
+    
     function FinalLot(
         address[] memory senders,
         uint256[] memory prices,

@@ -45,8 +45,25 @@ interface ILot {
         uint256 oldPrice
     ) external;
 
-    function Verify(address[] memory _senders, uint256[] memory _prices, uint256 _snapPoint, address _playerAddr) external 
-        view returns(uint, bool);
+    function VerifyFull(
+    address[] memory _owners,
+    uint256[] memory _prices, 
+    uint256 _timeFirst, 
+    uint256 _timeSecond, 
+    uint256 _value
+    ) external view ;
+
+    function VerifyPart(
+    address[] memory _owners,
+    uint256[] memory _prices, 
+    uint256 _snap
+    ) external view;
+
+    function CorrectPart(
+    address[] memory _owners, 
+    uint256[] memory _prices, 
+    uint256 _snap
+    ) external;
 
     function Return(uint256 _snap) external;
 

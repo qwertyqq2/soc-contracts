@@ -43,6 +43,26 @@ interface IRound {
         uint256 _value
     ) external;
 
+    function VerifyFull(
+    address[] memory _owners, 
+    uint256[] memory _prices,
+    uint256 _timeFirst, 
+    uint256 _timeSecond, 
+    uint256 _value
+    ) external view; 
+
+    function VerifyPart(
+        address[] memory _owners, 
+        uint256[] memory _prices, 
+        uint256 _snap
+    ) external view;
+
+    function CorrectPart(
+        address[] memory _owners, 
+        uint256[] memory _prices, 
+        uint256 _snap
+    ) external;
+
     function GetSnap() external view returns (uint256);
 
     function GetBalance() external view returns (uint256);

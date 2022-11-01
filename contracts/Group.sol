@@ -106,6 +106,38 @@ contract Group {
         round.ReceiveLot(_sender, _price, _timeFirst, _timeSecond, _value);
     }
 
+    function TryVerifyFull(
+    address[] memory _owners, 
+    uint256[] memory _prices,
+    uint256 _timeFirst, 
+    uint256 _timeSecond, 
+    uint256 _value
+    )
+     public view{
+        IRound round = IRound(roundAddr);
+        round.VerifyFull(_owners, _prices, _timeFirst, _timeSecond, _value);
+    }
+
+    
+    function TryVerifyPart(
+        address[] memory _owners, 
+        uint256[] memory _prices, 
+        uint256 _snap
+    ) public view{
+        IRound round = IRound(roundAddr);
+        round.VerifyPart(_owners, _prices, _snap);
+    }
+
+
+    function Correct(
+        address[] memory _owners, 
+        uint256[] memory _prices, 
+        uint256 _snap
+    ) public{
+        IRound round = IRound(roundAddr);
+        round.CorrectPart(_owners, _prices, _snap);
+    }
+
     function GetSnap() public view returns (uint256) {
         IRound round = IRound(roundAddr);
         return round.GetSnap();

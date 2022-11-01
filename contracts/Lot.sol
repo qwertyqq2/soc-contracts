@@ -40,59 +40,6 @@ contract Lot {
         roundAddr = msg.sender;
     }
 
-    function getProof(
-        address _sender,
-        uint256 _price,
-        uint256 _timeFirst,
-        uint256 _timeSecond,
-        uint256 _value
-    ) public pure returns (uint256) {
-        return
-            uint256(
-                keccak256(
-                    abi.encodePacked(
-                        _sender,
-                        _price,
-                        _timeFirst,
-                        _timeSecond,
-                        _value
-                    )
-                )
-            );
-    }
-
-    function proof(
-        address[] memory _senders,
-        uint256[] memory _prices,
-        uint256 _timeFirst,
-        uint256 _timeSecond,
-        uint256 _value,
-        uint256 _snapshot
-    ) private pure returns (bool) {
-        uint256 snap = uint256(
-            keccak256(
-                abi.encodePacked(
-                    _timeFirst,
-                    _timeSecond,
-                    _senders[0],
-                    _prices[0],
-                    _value
-                )
-            )
-        );
-        uint48 i = 1;
-        for (; i < _senders.length; i++) {
-            address send = _senders[i];
-            uint256 price = _prices[i];
-            snap = uint256(keccak256(abi.encodePacked(send, price, snap)));
-        }
-        if (snap == _snapshot) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
 
     function New(
         uint256 timeFirst,
@@ -106,7 +53,6 @@ contract Lot {
                 abi.encodePacked(timeFirst, timeSecond, owner, price, value)
             )
         );
-        console.log("New lot owner: ", owner, " new lot price: ", price);
     }
 
 
@@ -118,55 +64,61 @@ contract Lot {
         if (newPrice <= 0) {
             exist = false;
         }
-        console.log("New lot owner: ", sender, " new lot price: ", newPrice);
     }
 
 
-    function Verify(address[] memory _senders, uint256[] memory _prices, uint256 _snapPoint, address _playerAddr) public 
-        view onlyRound returns(uint, bool){
-        
+    function VerifyFull(
+    address[] memory _owners, 
+    uint256[] memory _prices, 
+    uint256 _timeFirst, 
+    uint256 _timeSecond, 
+    uint256 _value
+    ) public  view onlyRound{
         require(exist == true, "Already not exist");
+        console.log("Verify Full");
 
-        for(uint i=0;i<_senders.length;i++){
-            _snapPoint = uint256(
-            keccak256(abi.encodePacked(_senders[i], _prices[i], _snapPoint))
+        uint256 _snapPoint = uint256(
+            keccak256(
+                abi.encodePacked(_timeFirst, _timeSecond, _owners[0], _prices[0], _value)
+            )
         );
+
+        for(uint i=1;i<_owners.length;i++){
+            _snapPoint = uint256(
+                keccak256(abi.encodePacked(_owners[i], _prices[i], _snapPoint))
+            );
+
         }
         require(_snapPoint == snapshot, "Not right verify");
 
-        IPlayer player = IPlayer(_playerAddr);
-
-        uint256 oldPrice = _prices[0];
-        uint256 Reserve = roundAddr.balance;
-        uint256 w = player.Get();
-
-        if(oldPrice>w*Reserve/10000){
-            return (101, false);
-        }
-
-        uint256 newPrice = _prices[1];
-
-        if(newPrice>w*Reserve/10000){
-            return (102, false);
-        }
-
-        return (0, true);
     }
 
-    function Return(uint256 _snap) public{
+
+    function VerifyPart(
+        address[] memory _owners, 
+        uint256[] memory _prices, 
+        uint256 _snap
+        ) public view{
+        console.log("Verify Particually");
+        for(uint i=0;i<_owners.length;i++){
+            _snap = uint256(
+                keccak256(abi.encodePacked(_owners[i], _prices[i], _snap))
+            );
+        }
+        require(_snap == snapshot, "Not right verify");
+        require(_prices[0]>_prices[1], "No mistake");
+    }
+
+    function CorrectPart(
+        address[] memory _owners, 
+        uint256[] memory _prices, 
+        uint256 _snap
+        ) public{
+        VerifyPart(_owners, _prices, _snap);
         snapshot = _snap;
+
     }
 
-    function IsOwner(address sender, uint16 price) public view returns (bool) {
-        uint256 snap = uint256(
-            keccak256(abi.encodePacked(sender, price, snapshot1))
-        );
-        if (snap == snapshot) {
-            return true;
-        } else {
-            return false;
-        }
-    }
 
     function EndLot(
         address[] memory _senders,
@@ -176,10 +128,6 @@ contract Lot {
         uint256 _value,
         uint256 _countSend
     ) public onlyRound {
-        require(
-            proof(_senders, _prices, _timeFirst, _timeSecond, _value, snapshot),
-            "Not right!"
-        );
         require(block.timestamp > _timeFirst - 30, "Not enought time");
 
         emit FinalLot(_senders[_countSend - 1], _value);
@@ -198,21 +146,6 @@ contract Lot {
     }
 
 
-    function PreSend(
-        address _sender,
-        uint256 _price,
-        uint256 _timeFirst,
-        uint256 _timeSecond,
-        uint256 _value
-    ) public view onlyRound returns (bool) {
-        require(
-            getProof(_sender, _price, _timeFirst, _timeSecond, _value) ==
-                snapshot1,
-            "Not right data!"
-        );
-        return true;
-    }
-
 
     function Join(address sender, uint256 rate) public {
         require(exist, "Already not exist");
@@ -226,4 +159,5 @@ contract Lot {
     function GetSnap() public view returns (uint256) {
         return snapshot;
     }
+    
 }

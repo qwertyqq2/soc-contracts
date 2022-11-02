@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./Round.sol";
-import "./IRound.sol";
+import "./interfaces/IRound.sol";
 
 import "hardhat/console.sol";
 
@@ -46,6 +46,7 @@ contract Group {
         _;
     }
 
+
     function CreateLot(
         uint256 _timeFirst,
         uint256 _timeSecond,
@@ -61,9 +62,13 @@ contract Group {
         round.BuyLot(msg.sender, newPrice);
     }
 
-    function GetCurrentTime() public view returns (uint256) {
-        return block.timestamp;
+    function JoinLot(
+        uint256 rate
+    ) public{
+        IRound round = IRound(roundAddr);
+        round.JoinLot(msg.sender, rate);
     }
+
 
     function FinalLot(
         address[] memory senders,
@@ -107,8 +112,8 @@ contract Group {
     }
 
     function TryVerifyFull(
-    address[] memory _owners, 
-    uint256[] memory _prices,
+    address[] calldata _owners, 
+    uint256[] calldata _prices,
     uint256 _timeFirst, 
     uint256 _timeSecond, 
     uint256 _value
@@ -119,23 +124,29 @@ contract Group {
     }
 
     
-    function TryVerifyPart(
+    function TryVerifyOwner(
         address[] memory _owners, 
         uint256[] memory _prices, 
+        address[] memory _support,
+        uint256[] memory _additives,
+        uint256[] memory _sizes,
         uint256 _snap
     ) public view{
         IRound round = IRound(roundAddr);
-        round.VerifyPart(_owners, _prices, _snap);
+        round.VerifyOwner(_owners, _prices, _support, _additives, _sizes, _snap);
     }
 
 
     function Correct(
         address[] memory _owners, 
-        uint256[] memory _prices, 
+        uint256[] memory _prices,
+        address[] memory _support,
+        uint256[] memory _additives,
+        uint256[] memory _sizes,
         uint256 _snap
     ) public{
         IRound round = IRound(roundAddr);
-        round.CorrectPart(_owners, _prices, _snap);
+        round.CorrectOwner(_owners, _prices, _support, _additives, _sizes, _snap);
     }
 
     function GetSnap() public view returns (uint256) {

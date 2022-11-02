@@ -14,7 +14,15 @@ interface IRound {
         uint256 val
     ) external;
 
-    function BuyLot(address sender, uint256 price) external;
+    function BuyLot(
+        address sender,
+        uint256 price
+    ) external;
+
+    function JoinLot(
+        address sender, 
+        uint256 rate
+    ) external;
 
     function GetPlayer(address player) external view returns (uint256);
 
@@ -44,22 +52,28 @@ interface IRound {
     ) external;
 
     function VerifyFull(
-    address[] memory _owners, 
-    uint256[] memory _prices,
+    address[] calldata _owners, 
+    uint256[] calldata _prices,
     uint256 _timeFirst, 
     uint256 _timeSecond, 
     uint256 _value
     ) external view; 
 
-    function VerifyPart(
+    function VerifyOwner(
         address[] memory _owners, 
         uint256[] memory _prices, 
+        address[] memory _support,
+        uint256[] memory _additives,
+        uint256[] memory _sizes,
         uint256 _snap
     ) external view;
 
-    function CorrectPart(
+    function CorrectOwner(
         address[] memory _owners, 
-        uint256[] memory _prices, 
+        uint256[] memory _prices,
+        address[] memory _support,
+        uint256[] memory _additives,
+        uint256 [] memory _sizes, 
         uint256 _snap
     ) external;
 

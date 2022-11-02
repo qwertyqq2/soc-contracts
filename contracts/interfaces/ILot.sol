@@ -41,11 +41,10 @@ interface ILot {
 
     function Join(
         address sender,
-        uint256 rate,
-        uint256 oldPrice
+        uint256 rate
     ) external;
 
-    function VerifyFull(
+    function verifyFull(
     address[] memory _owners,
     uint256[] memory _prices, 
     uint256 _timeFirst, 
@@ -53,15 +52,21 @@ interface ILot {
     uint256 _value
     ) external view ;
 
-    function VerifyPart(
-    address[] memory _owners,
-    uint256[] memory _prices, 
-    uint256 _snap
-    ) external view;
+    function verifyOwner(
+        address[] memory _owners, 
+        uint256[] memory _prices,
+        address[] memory _support,
+        uint256[] memory _additives,
+        uint256 [] memory _sizes,
+        uint256 _snap
+        ) external view;
 
-    function CorrectPart(
+    function CorrectOwner(
     address[] memory _owners, 
     uint256[] memory _prices, 
+    address[] memory _support,
+    uint256[] memory _additives,
+    uint256 [] memory _sizes,
     uint256 _snap
     ) external;
 

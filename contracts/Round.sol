@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./IGroup.sol";
-import "./IExchangeTest.sol";
+import "./interfaces/IGroup.sol";
+import "./interfaces/IExchangeTest.sol";
 import "./ExchangeTest.sol";
 import "./Lot.sol";
-import "./ILot.sol";
+import "./interfaces/ILot.sol";
 
 import "hardhat/console.sol";
 
@@ -102,40 +102,57 @@ contract Round {
         lot.New(timeFirst, timeSecond, sender, price, val);
     }
 
-    function BuyLot(address sender, uint256 price) public onlyGroup {
+    function BuyLot(
+        address sender,
+        uint256 price
+     ) public onlyGroup {
         ILot lot = ILot(lotAddr);
         lot.Buy(sender, price);
     }
 
+    function JoinLot(
+        address sender, 
+        uint256 rate
+    ) public onlyGroup{
+        ILot lot = ILot(lotAddr);
+        lot.Join(sender, rate);
+    }
+
     function VerifyFull(
-    address[] memory _owners, 
-    uint256[] memory _prices,
+    address[] calldata _owners, 
+    uint256[] calldata _prices,
     uint256 _timeFirst, 
     uint256 _timeSecond, 
     uint256 _value
     ) public view {
         ILot lot = ILot(lotAddr);
-        lot.VerifyFull(_owners, _prices, _timeFirst, _timeSecond, _value);
+        lot.verifyFull(_owners, _prices, _timeFirst, _timeSecond, _value);
     }
 
 
-    function VerifyPart(
+    function VerifyOwner(
         address[] memory _owners, 
         uint256[] memory _prices, 
+        address[] memory _support,
+        uint256[] memory _additives,
+        uint256[] memory _sizes,
         uint256 _snap
     ) public view{
         ILot lot = ILot(lotAddr);
-        lot.VerifyPart(_owners, _prices, _snap);
+        lot.verifyOwner(_owners, _prices, _support, _additives, _sizes, _snap);
     }
 
 
-    function CorrectPart(
+    function CorrectOwner(
         address[] memory _owners, 
-        uint256[] memory _prices, 
+        uint256[] memory _prices,
+        address[] memory _support,
+        uint256[] memory _additives,
+        uint256 [] memory _sizes, 
         uint256 _snap
     ) public{
         ILot lot = ILot(lotAddr);
-        lot.CorrectPart(_owners, _prices, _snap);
+        lot.CorrectOwner(_owners, _prices, _support, _additives, _sizes, _snap);
     }
     
     function FinalLot(

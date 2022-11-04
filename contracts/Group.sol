@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import "./Round.sol";
 import "./interfaces/IRound.sol";
 
+import "./libraries/Proof.sol";
+
 import "hardhat/console.sol";
 
 contract Group {
@@ -47,26 +49,41 @@ contract Group {
     }
 
 
+
     function CreateLot(
         uint256 _timeFirst,
         uint256 _timeSecond,
         uint256 _price,
-        uint256 _val
+        uint256 _val,
+        uint256 _H1, 
+        uint256 _H2, 
+        uint _balance
     ) public {
+        Proof.ProofRes memory proof = Proof.NewProof(msg.sender, _price, _H1, _H2, _balance);
         IRound round = IRound(roundAddr);
-        round.NewLot(msg.sender, _timeFirst, _timeSecond, _price, _val);
+        round.NewLot(_timeFirst, _timeSecond, _val, proof);
     }
 
-    function BuyLot(uint256 newPrice) public {
+    function BuyLot(
+        uint256 _price,
+        uint _H1,
+        uint _H2,
+        uint256 _balance
+        ) public {
+        Proof.ProofRes memory proof = Proof.NewProof(msg.sender, _price, _H1, _H2, _balance);
         IRound round = IRound(roundAddr);
-        round.BuyLot(msg.sender, newPrice);
+        round.BuyLot(proof);
     }
 
     function JoinLot(
-        uint256 rate
+        uint256 _price,
+        uint _H1, 
+        uint _H2, 
+        uint256 _balance
     ) public{
+        Proof.ProofRes memory proof = Proof.NewProof(msg.sender, _price, _H1, _H2, _balance);
         IRound round = IRound(roundAddr);
-        round.JoinLot(msg.sender, rate);
+        round.JoinLot(proof);
     }
 
 
@@ -156,5 +173,15 @@ contract Group {
 
     function GetRound() public view returns(address){
         return roundAddr;
+    }
+
+    function GetSnapRound() public view returns(uint256){
+        IRound round = IRound(roundAddr);
+        return round.GetSnapshot();
+    }
+
+    function GetInitSnapRound() public view returns(uint256){
+        IRound round = IRound(roundAddr);
+        return round.GetInitSnap();
     }
 }

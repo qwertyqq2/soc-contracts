@@ -1,27 +1,26 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "../libraries/Proof.sol";
+
 interface IRound {
     function Enter(address _sender, uint256 _value) external;
 
     function StartRound() external;
 
     function NewLot(
-        address sender,
-        uint256 timeFirst,
-        uint256 timeSecond,
-        uint256 price,
-        uint256 val
+        uint256 _timeFirst,
+        uint256 _timeSecond,
+        uint256 _val,
+        Proof.ProofRes memory proof
     ) external;
 
     function BuyLot(
-        address sender,
-        uint256 price
+        Proof.ProofRes memory proof
     ) external;
 
     function JoinLot(
-        address sender, 
-        uint256 rate
+        Proof.ProofRes memory proof
     ) external;
 
     function GetPlayer(address player) external view returns (uint256);
@@ -80,4 +79,8 @@ interface IRound {
     function GetSnap() external view returns (uint256);
 
     function GetBalance() external view returns (uint256);
+
+    function GetSnapshot() external view returns(uint256);
+
+    function GetInitSnap() external view returns(uint256);
 }

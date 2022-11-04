@@ -3,9 +3,15 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/IGroup.sol";
 import "./interfaces/IExchangeTest.sol";
+import "./interfaces/ILot.sol";
+
+import "./libraries/Proof.sol";
+import "./libraries/Math.sol";
+
+
 import "./ExchangeTest.sol";
 import "./Lot.sol";
-import "./interfaces/ILot.sol";
+import "./Player.sol";
 
 import "hardhat/console.sol";
 
@@ -13,7 +19,6 @@ contract Round {
     address addr;
 
     mapping(address => uint256) players;
-    address[] playersAddr;
     uint256 balance;
     uint256 timeCreation;
     address groupAddress;
@@ -23,6 +28,9 @@ contract Round {
     uint256 deposit;
 
     address lotAddr;
+
+    uint256 snapshot = 115792089237316195423570985008687907853269984665640564039457584007913129639935;
+
 
     constructor(uint256 _deposit) {
         groupAddress = msg.sender;
@@ -73,49 +81,50 @@ contract Round {
     }
 
     function StartRound() public onlyGroup {
-        uint i=0;
+        uint8 i=0;
         for (i = 0; i < pendingAddress.length; i++) {
-            players[pendingAddress[i]] = pendingPlayers[pendingAddress[i]];
             pendingPlayers[pendingAddress[i]] = 0;
-            playersAddr.push(pendingAddress[i]);
+            snapshot = Math.xor(snapshot, uint256(keccak256(abi.encodePacked(
+                uint256(uint160(pendingAddress[i])), " ", deposit))));
         }
-
-        for (i = 0; i < pendingAddress.length; i++) {
-            pendingAddress.pop();
-        }
-
         timeCreation = block.timestamp;
-    
+
    
         Lot lot = new Lot(1);
         lotAddr = address(lot);
     }
 
+
+    
+    modifier enoughRes(Proof.ProofRes memory proof){
+        uint res = Proof.GetProof(proof);
+        require(res == snapshot, "Not proof");
+        require(proof.price<=proof.balance, "Not enoung res");
+        _;
+    }
+
     function NewLot(
-        address sender,
-        uint256 timeFirst,
-        uint256 timeSecond,
-        uint256 price,
-        uint256 val
-    ) public onlyGroup {
+        uint256 _timeFirst,
+        uint256 _timeSecond,
+        uint256 _val,
+        Proof.ProofRes memory proof
+    ) public onlyGroup enoughRes(proof) {
         ILot lot = ILot(lotAddr);
-        lot.New(timeFirst, timeSecond, sender, price, val);
+        lot.New(_timeFirst, _timeSecond, proof.addr, proof.price, _val);
     }
 
     function BuyLot(
-        address sender,
-        uint256 price
-     ) public onlyGroup {
+        Proof.ProofRes memory proof
+     ) public onlyGroup enoughRes(proof) {
         ILot lot = ILot(lotAddr);
-        lot.Buy(sender, price);
+        lot.Buy(proof.addr, proof.price);
     }
 
     function JoinLot(
-        address sender, 
-        uint256 rate
-    ) public onlyGroup{
+        Proof.ProofRes memory proof
+    ) public onlyGroup enoughRes(proof) {
         ILot lot = ILot(lotAddr);
-        lot.Join(sender, rate);
+        lot.Join(proof.addr, proof.price);
     }
 
     function VerifyFull(
@@ -221,5 +230,13 @@ contract Round {
 
     function GetBalance() public view returns (uint256) {
         return addr.balance;
+    }
+    
+    function GetSnapshot() public view returns(uint256){
+        return snapshot;
+    }
+
+    function GetInitSnap() public pure returns(uint256){
+        return 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     }
 }

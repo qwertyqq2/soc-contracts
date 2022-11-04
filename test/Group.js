@@ -3,11 +3,30 @@ const { utils } = require("ethers");
 const web3 = require('web3');
 const deposit = BigInt("10000")
 
+
+
 beforeEach(async function () {
-    Group = await ethers.getContractFactory("Group")
+
+    const mathLib = await ethers.getContractFactory("Math");
+    const mlib = await mathLib.deploy();
+    await mlib.deployed();
+
+    const proofLib = await ethers.getContractFactory("Proof");
+    const plib = await proofLib.deploy();
+    await plib.deployed();
+
+
+    Group = await ethers.getContractFactory("Group", {
+        libraries: {
+            Math: mlib.address,
+            Proof: plib.address,
+        },
+    });
+
     group = await Group.deploy()
     await group.CreateRound(deposit)
     const accounts = await ethers.getSigners();
+
     for (let i = 0; i < accounts.length; i++) {
         await group.connect(accounts[i]).Enter({ value: deposit })
     }
@@ -107,6 +126,13 @@ describe("Verify", async () => {
     })
 })
 
+async function add(accounts) {
+    for (let k = 0; k < 10; k++) {
+        await group.connect(accounts[k]).JoinLot(10 + k)
+
+    }
+}
+
 
 async function Additives(accounts, snap) {
     for (let k = 0; k < 10; k++) {
@@ -128,7 +154,7 @@ async function AdditivesParams(accounts, support, additives, sizes) {
     sizes.push(10)
 }
 
-describe.only("Mistake", async () => {
+describe("Mistake", async () => {
     it("Substitution", async () => {
         const accounts = await ethers.getSigners();
         let owners = []
@@ -234,6 +260,88 @@ describe("Trade", async () => {
         )
         snap = await Additives(accounts, snap)
         snapshot = await group.GetSnap()
+    })
+})
+
+
+describe.only("Snapshot players", async () => {
+    it("Init", async () => {
+
+        const mathLib = await ethers.getContractFactory("Math");
+        const mlib = await mathLib.deploy();
+        await mlib.deployed();
+
+        const accounts = await ethers.getSigners();
+
+        const N = 10;
+        const myAddr = accounts[N].address
+        let myBalance = deposit
+        const hash = await mlib.GetSnap(myAddr, myBalance)
+
+
+        let H1 = await group.GetInitSnapRound()
+
+        for (let i = 0; i < N; i++) {
+            snap = await mlib.GetSnap(accounts[i].address, deposit)
+            H1 = await mlib.xor(H1, snap)
+        }
+
+        let H2 = await mlib.GetSnap(accounts[N + 1].address, deposit)
+        for (let i = N + 2; i < accounts.length; i++) {
+            snap = await mlib.GetSnap(accounts[i].address, deposit)
+            H2 = await mlib.xor(H2, snap)
+        }
+
+        const part = await mlib.xor(H1, hash)
+        const res = await mlib.xor(part, H2)
+        const snapshot = await group.GetSnapRound()
+
+        expect(res).to.equal(snapshot)
+
+    })
+
+    it("Trading", async () => {
+        const mathLib = await ethers.getContractFactory("Math");
+        const mlib = await mathLib.deploy();
+        await mlib.deployed();
+
+        const accounts = await ethers.getSigners();
+        //Data user//
+        const N = 10;
+        const myAddr = accounts[N].address
+        let myBalance = deposit
+        let mySnap = await mlib.GetSnap(myAddr, myBalance)
+
+        //init hashes//
+        let H1 = await group.GetInitSnapRound()
+
+        for (let i = 0; i < N; i++) {
+            snap = await mlib.GetSnap(accounts[i].address, deposit)
+            H1 = await mlib.xor(H1, snap)
+        }
+
+        let H2 = await mlib.GetSnap(accounts[N + 1].address, deposit)
+        for (let i = N + 2; i < accounts.length; i++) {
+            snap = await mlib.GetSnap(accounts[i].address, deposit)
+            H2 = await mlib.xor(H2, snap)
+        }
+
+
+        //lot//
+        const timeF = 123123123
+        const timeS = 1231231231212
+        const price = 100
+        const value = 10
+
+        await group.connect(accounts[N]).CreateLot(timeF, timeS, price, value, H1, H2, myBalance)
+
+        // uint256 _timeFirst,
+        // uint256 _timeSecond,
+        // uint256 _price,
+        // uint256 _val,
+        // uint256 _H1, 
+        // uint256 _H2, 
+        // uint _balance
     })
 })
 

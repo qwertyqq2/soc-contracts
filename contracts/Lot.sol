@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/IRound.sol";
 import "./interfaces/IPlayer.sol";
+
 import "hardhat/console.sol";
 
 
@@ -57,6 +58,7 @@ contract Lot {
             )
         );
         emit NewLot(timeFirst, timeSecond, owner, price, value, snapshot);
+        console.log("New lot: ", owner, price);
     }
 
 
@@ -71,6 +73,7 @@ contract Lot {
         }
         lastCommit = block.timestamp;
         emit BuyLot(sender, newPrice, snapshot);
+        console.log("Buy lot: ", sender, newPrice);
     }
 
 
@@ -82,6 +85,7 @@ contract Lot {
         );
 
         emit JoinLot(sender, rate, snapshot);
+        console.log("Join lot: ", sender, rate);
     }
 
 

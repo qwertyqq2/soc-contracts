@@ -10,11 +10,13 @@
   "license": "ISC",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^2.0.0",
-    "hardhat": "^2.12.1"
+    "hardhat": "^2.12.1",
+    "hardhat-gas-reporter": "^1.0.9"
   },
   "dependencies": {
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@openzeppelin/hardhat-upgrades": "^1.21.0",
+    "dotenv": "^16.0.3",
     "web3": "^1.8.0"
   }
 }

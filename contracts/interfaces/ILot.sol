@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "../libraries/Proof.sol";
+
+
 interface ILot {
     event NewLot(
         uint256 timeFirst,
@@ -22,27 +25,28 @@ interface ILot {
 
     function Buy(address sender, uint256 newPrice) external;
 
-    function EndLot(
-        address[] memory senders,
-        uint256[] memory prices,
-        uint256 timeFirst,
-        uint256 timeSecond,
-        uint256 value,
-        uint256 countSend
-    ) external;
-
-    function PreSend(
-        address _sender,
-        uint256 _price,
-        uint256 _timeFirst,
-        uint256 _timeSecond,
-        uint256 _value
-    ) external view returns (bool);
 
     function Join(
         address sender,
         uint256 rate
     ) external;
+
+    function End(
+        uint256 timeFirst,
+        uint256 timeSecond,
+        uint256 value
+    ) external;
+
+    function Close(
+        uint256 _timeFirst,
+        uint256 _timeSecond,
+        uint256 _value,
+        Proof.ProofRes memory proof
+    ) external;
+
+    function SetReceiveTokens(uint _receiveTokens) external;
+
+    function GetReceiveTokens() external view returns(uint);
 
     function verifyFull(
     address[] memory _owners,

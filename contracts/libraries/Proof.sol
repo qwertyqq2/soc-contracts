@@ -4,11 +4,12 @@ pragma solidity ^0.8.0;
 
 library Proof {
     struct ProofRes{
-            address addr;
-            uint256 price;
-            uint H1;
-            uint H2;
-            uint balance;
+                address addr;
+                uint256 price;
+                uint H1;
+                uint H2;
+                uint balance;
+                uint prevSnap;
         }
 
     function NewProof(
@@ -28,20 +29,25 @@ library Proof {
     }
 
 
-    function snap(ProofRes calldata proof) internal pure returns(uint256) {
+    function snap(ProofRes memory proof) internal pure returns(uint256) {
         return uint256(keccak256(abi.encodePacked(uint256(uint160(proof.addr)), " ", proof.balance)));
     }
 
-    function GetProof(ProofRes calldata proof) public pure returns(uint256){
+    function GetProofBalance(ProofRes memory proof) public pure returns(uint256){
         uint s = snap(proof);
         return xor(xor(proof.H1, s), proof.H2);
     } 
 
 
+    function GetProofOwner(ProofRes memory proof) public pure returns(uint256){
+        return uint256(
+            keccak256(abi.encodePacked(proof.addr, proof.price, proof.prevSnap))
+        );
+    }
+
     function xor(uint a, uint b) internal pure returns(uint256){
         return a^b;
     }
-
 
 
     

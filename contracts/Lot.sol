@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./interfaces/IRound.sol";
-import "./interfaces/IPlayer.sol";
+import "./interfaces/IExchangeTest.sol";
+
+import "./libraries/Proof.sol";
+
 
 import "hardhat/console.sol";
 
@@ -17,7 +19,10 @@ contract Lot {
     uint256 lastCommit;
 
     bool exist = true;
+    bool wait = false;
 
+    uint receiveToken;
+    
     event NewLot(
         uint256 timeFirst,
         uint256 timeSecond,
@@ -33,16 +38,16 @@ contract Lot {
 
     event FinalLot(address owner, uint256 value);
 
-    modifier onlyRound() {
-        require(msg.sender == roundAddr, "It`s not a round contract!");
-        _;
-    }
 
-    constructor(uint256 num) {
+    constructor(uint256 num ) {
         numberLot = num;
         roundAddr = msg.sender;
     }
 
+    modifier onlyRound() {
+        require(msg.sender == roundAddr, "It`s not a round contract!");
+        _;
+    }
 
     function New(
         uint256 timeFirst,
@@ -57,8 +62,16 @@ contract Lot {
                 abi.encodePacked(timeFirst, timeSecond, owner, price, value)
             )
         );
+
+        snapshot1 = uint256(
+            keccak256(
+                abi.encodePacked(timeFirst, timeSecond, value)
+            )
+        );
+
+        
         emit NewLot(timeFirst, timeSecond, owner, price, value, snapshot);
-        console.log("New lot: ", owner, price);
+        //console.log("New lot: ", owner, price);
     }
 
 
@@ -73,7 +86,7 @@ contract Lot {
         }
         lastCommit = block.timestamp;
         emit BuyLot(sender, newPrice, snapshot);
-        console.log("Buy lot: ", sender, newPrice);
+        //console.log("Buy lot: ", sender, newPrice);
     }
 
 
@@ -85,7 +98,72 @@ contract Lot {
         );
 
         emit JoinLot(sender, rate, snapshot);
-        console.log("Join lot: ", sender, rate);
+        //console.log("Join lot: ", sender, rate);
+    }
+
+
+    modifier proofInit(
+        uint256 timeFirst,
+        uint256 timeSecond,
+        uint256 value
+    ){
+        require(snapInit(timeFirst, timeSecond, value) == snapshot1, "Not proof init");
+        _;
+    }
+
+    modifier proofOwner(Proof.ProofRes memory proof){
+        uint snap = Proof.GetProofOwner(proof);
+        require(snap == snapshot, "Not right proof owner");
+        _;
+
+    }
+    function End(
+        uint256 _timeFirst,
+        uint256 _timeSecond,
+        uint256 _value
+        ) public onlyRound proofInit(_timeFirst, _timeSecond, _value) {
+        require(block.timestamp> 0, "Not correct time");
+        wait = true;
+    }
+
+    function SetReceiveTokens(uint _receiveTokens) public onlyRound{
+        require(_receiveTokens>0, "uncorrect value");
+        receiveToken = _receiveTokens;
+    }
+
+    function GetReceiveTokens() public view returns(uint){
+        return receiveToken;
+    }
+
+
+    function Close(
+        uint256 _timeFirst,
+        uint256 _timeSecond,
+        uint256 _value,
+        Proof.ProofRes memory proof
+    ) public onlyRound proofInit(_timeFirst, _timeSecond, _value) proofOwner(proof){
+        require(wait == true, "not wait");
+        require(block.timestamp>0);
+        exist = false;
+    }
+
+
+
+    function snapInit(
+        uint256 timeFirst,
+        uint256 timeSecond,
+        uint256 value
+    ) public pure returns(uint256){
+        return uint256(
+            keccak256(
+                abi.encodePacked(timeFirst, timeSecond, value)
+            )
+        );
+    }
+
+
+     function GetSnap() public view returns (uint256) {
+        return snapshot;
     }
 
 
@@ -156,50 +234,5 @@ contract Lot {
         console.log("Snapshot is change");
     }
 
-
-
-    function calcJoin(
-        address[] memory _support, 
-        uint256[] memory _additives, 
-        uint256 _snapBuy
-    ) public pure returns(uint256){
-        for(uint i=0;i<_support.length;i++){
-            _snapBuy = uint256(
-                keccak256(abi.encodePacked(_support[i], _additives[i], _snapBuy))
-            );
-        }
-        return _snapBuy;
-    }
-
-    function EndLot(
-        address[] memory _senders,
-        uint256[] memory _prices,
-        uint256 _timeFirst,
-        uint256 _timeSecond,
-        uint256 _value,
-        uint256 _countSend
-    ) public onlyRound {
-        require(block.timestamp > _timeFirst - 30, "Not enought time");
-
-        emit FinalLot(_senders[_countSend - 1], _value);
-
-        snapshot1 = uint256(
-            keccak256(
-                abi.encodePacked(
-                    _senders[_countSend - 1],
-                    _prices[_countSend - 1],
-                    _timeFirst,
-                    _timeSecond,
-                    _value
-                )
-            )
-        );
-    }
-
-
-
-    function GetSnap() public view returns (uint256) {
-        return snapshot;
-    }
     
 }

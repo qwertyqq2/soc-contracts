@@ -35,19 +35,16 @@ interface IRound {
     ) external;
 
     function SendLot(
-        address _sender,
-        uint256 _price,
         uint256 _timeFirst,
         uint256 _timeSecond,
         uint256 _value
     ) external;
 
     function ReceiveLot(
-        address _sender,
-        uint256 _price,
         uint256 _timeFirst,
         uint256 _timeSecond,
-        uint256 _value
+        uint256 _value,
+        Proof.ProofRes memory proof
     ) external;
 
     function VerifyFull(
@@ -83,4 +80,6 @@ interface IRound {
     function GetSnapshot() external view returns(uint256);
 
     function GetInitSnap() external view returns(uint256);
+
+    function GetExchange() external view returns(address);
 }

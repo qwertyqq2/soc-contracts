@@ -16,10 +16,15 @@ beforeEach(async function () {
     await plib.deployed();
 
 
+    const playerLib = await ethers.getContractFactory("Player");
+    const playerlib = await playerLib.deploy();
+    await playerlib.deployed();
+
     Group = await ethers.getContractFactory("Group", {
         libraries: {
             Math: mlib.address,
             Proof: plib.address,
+            Player: playerlib.address,
         },
     });
 
@@ -300,31 +305,39 @@ describe.only("Snapshot players", async () => {
 
     })
 
-    it("Trading", async () => {
+    it("Sending", async () => {
         const mathLib = await ethers.getContractFactory("Math");
         const mlib = await mathLib.deploy();
         await mlib.deployed();
 
         const accounts = await ethers.getSigners();
+
         //Data user//
         const N = 10;
-        const myAddr = accounts[N].address
-        let myBalance = deposit
-        let mySnap = await mlib.GetSnap(myAddr, myBalance)
 
-        //init hashes//
-        let H1 = await group.GetInitSnapRound()
+        let balances = []
+        let addresses = []
 
-        for (let i = 0; i < N; i++) {
-            snap = await mlib.GetSnap(accounts[i].address, deposit)
-            H1 = await mlib.xor(H1, snap)
+        for (let i = 0; i < accounts.length; i++) {
+            balances.push(deposit)
+            addresses.push(accounts[i].address)
         }
 
-        let H2 = await mlib.GetSnap(accounts[N + 1].address, deposit)
-        for (let i = N + 2; i < accounts.length; i++) {
-            snap = await mlib.GetSnap(accounts[i].address, deposit)
-            H2 = await mlib.xor(H2, snap)
+        async function GetProofPlayer(N) {
+            let H1 = await group.GetInitSnapRound()
+            for (let i = 0; i < N; i++) {
+                snap = await mlib.GetSnap(addresses[i], balances[i])
+                H1 = await mlib.xor(H1, snap)
+            }
+            let H2 = await mlib.GetSnap(accounts[N + 1].address, deposit)
+            for (let i = N + 2; i < accounts.length; i++) {
+                snap = await mlib.GetSnap(accounts[i].address, deposit)
+                H2 = await mlib.xor(H2, snap)
+            }
+            return [H1, H2]
         }
+
+        [H1, H2] = await GetProofPlayer(N)
 
 
         //lot//`
@@ -333,15 +346,89 @@ describe.only("Snapshot players", async () => {
         const price = 100
         const value = 10
 
-        await group.connect(accounts[N]).CreateLot(timeF, timeS, price, value, H1, H2, myBalance)
+        await group.connect(accounts[N]).CreateLot(timeF, timeS, price, value, H1, H2, balances[N])
 
-        // uint256 _timeFirst,
-        // uint256 _timeSecond,
-        // uint256 _price,
-        // uint256 _val,
-        // uint256 _H1, 
-        // uint256 _H2, 
-        // uint _balance
+
+        for (let i = 1; i < 10; i++) {
+            [H1, H2] = await GetProofPlayer(i)
+            await group.connect(accounts[i]).BuyLot(price + 2 * i, H1, H2, balances[i])
+            for (let j = 10; j < accounts.length - 7; j++) {
+                [H1, H2] = await GetProofPlayer(j)
+                await group.connect(accounts[j]).JoinLot(j, H1, H2, balances[j])
+            }
+        }
+
+
+        await group.connect(accounts[0]).SendLot(timeF, timeS, value)
+    })
+
+    it("Receive", async () => {
+        const mathLib = await ethers.getContractFactory("Math");
+        const mlib = await mathLib.deploy();
+        await mlib.deployed();
+
+        const accounts = await ethers.getSigners();
+
+
+        let balances = []
+        let addresses = []
+
+        for (let i = 0; i < accounts.length; i++) {
+            balances.push(deposit)
+            addresses.push(accounts[i].address)
+        }
+
+        async function GetProofPlayer(n) {
+            let H1 = await group.GetInitSnapRound()
+            for (let i = 0; i < n; i++) {
+                let snap = await mlib.GetSnap(addresses[i], balances[i])
+                H1 = await mlib.xor(H1, snap)
+            }
+            let H2 = await mlib.GetSnap(accounts[n + 1].address, deposit)
+            for (let i = n + 2; i < accounts.length; i++) {
+                let snap = await mlib.GetSnap(accounts[i].address, deposit)
+                H2 = await mlib.xor(H2, snap)
+            }
+            return [H1, H2]
+        }
+
+
+        const timeF = 123123123
+        const timeS = 1231231231212
+        const price = 100
+        const value = 10
+        let H1, H2
+        [H1, H2] = await GetProofPlayer(1)
+
+        await group.connect(accounts[1]).CreateLot(timeF, timeS, price, value, H1, H2, balances[1])
+
+        let snap = web3.utils.soliditySha3(
+            { type: "uint256", value: timeF },
+            { type: "uint256", value: timeS },
+            { type: "address", value: accounts[1].address },
+            { type: "uint256", value: price },
+            { type: "uint256", value: value }
+        )
+        let prevSnap
+        let i
+        const last = 10
+        for (i = 1; i < last + 1; i++) {
+            [H1, H2] = await GetProofPlayer(i)
+            await group.connect(accounts[i]).BuyLot(price + 2 * i, H1, H2, balances[i])
+            prevSnap = snap
+            snap = web3.utils.soliditySha3(
+                { type: "address", value: accounts[i].address },
+                { type: "uint256", value: price + 2 * i },
+                { type: "uint256", value: prevSnap }
+            )
+        }
+        await group.connect(accounts[0]).SendLot(timeF, timeS, value);
+
+
+        [H1, H2] = await GetProofPlayer(last);
+
+
+        await group.connect(accounts[0]).ReceiveLot(timeF, timeS, value,
+            accounts[last].address, price + 2 * last, H1, H2, balances[last], prevSnap);
     })
 })
-

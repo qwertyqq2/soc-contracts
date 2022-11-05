@@ -7,11 +7,11 @@ import "./interfaces/ILot.sol";
 
 import "./libraries/Proof.sol";
 import "./libraries/Math.sol";
+import "./libraries/Player.sol";
 
 
 import "./ExchangeTest.sol";
 import "./Lot.sol";
-import "./Player.sol";
 
 import "hardhat/console.sol";
 
@@ -92,12 +92,13 @@ contract Round {
    
         Lot lot = new Lot(1);
         lotAddr = address(lot);
+
     }
 
 
     
     modifier enoughRes(Proof.ProofRes memory proof){
-        uint res = Proof.GetProof(proof);
+        uint res = Proof.GetProofBalance(proof);
         require(res == snapshot, "Not proof");
         require(proof.price<=proof.balance, "Not enoung res");
         _;
@@ -126,6 +127,68 @@ contract Round {
         ILot lot = ILot(lotAddr);
         lot.Join(proof.addr, proof.price);
     }
+    
+
+    function SendLot(
+        uint256 _timeFirst,
+        uint256 _timeSecond,
+        uint256 _value
+    ) public onlyGroup{
+        IExchangeTest exc = IExchangeTest(exchangeAddress);
+        ILot lot = ILot(lotAddr);
+        lot.End(_timeFirst, _timeSecond, _value);
+        uint initBal = exc.GetTokenBalance();
+        exc.EthToToken{value: _value}();
+        lot.SetReceiveTokens(exc.GetTokenBalance() - initBal);
+        console.log("Lot sent ");
+    }
+
+
+    function ReceiveLot(
+        uint256 _timeFirst,
+        uint256 _timeSecond,
+        uint256 _value,
+        Proof.ProofRes memory proof
+    )  public onlyGroup{
+        IExchangeTest exc = IExchangeTest(exchangeAddress);
+        ILot lot = ILot(lotAddr);
+        lot.Close(_timeFirst, _timeSecond, _value, proof);
+        uint initBal = address(this).balance;
+        uint val = exc.GetTokenBalance();
+        exc.TokenToEth(val);
+        uint res = address(this).balance - initBal;
+        console.log("Lot received") ;
+        if(res>0){
+            snapshot = Player.UpdatePlus(proof.addr, proof.balance, proof.price, proof.H1, proof.H2);
+        }
+        else{
+            snapshot = Player.UpdateMinus(proof.addr, proof.balance, proof.price, proof.H1, proof.H2);
+        }
+
+    }
+
+    function GetSnap() public view returns (uint256) {
+        ILot lot = ILot(lotAddr);
+        return lot.GetSnap();
+    }
+
+    function GetBalance() public view returns (uint256) {
+        return addr.balance;
+    }
+    
+    function GetSnapshot() public view returns(uint256){
+        return snapshot;
+    }
+
+    function GetInitSnap() public pure returns(uint256){
+        return 115792089237316195423570985008687907853269984665640564039457584007913129639935;
+    }
+
+    function GetExchange() public view returns(address){
+        return exchangeAddress;
+    }
+
+
 
     function VerifyFull(
     address[] calldata _owners, 
@@ -164,79 +227,4 @@ contract Round {
         lot.CorrectOwner(_owners, _prices, _support, _additives, _sizes, _snap);
     }
     
-    function FinalLot(
-        address[] memory senders,
-        uint256[] memory prices,
-        uint256 timeFirst,
-        uint256 timeSecond,
-        uint256 value,
-        uint256 countSend
-    ) public {
-        ILot lot = ILot(lotAddr);
-        lot.EndLot(senders, prices, timeFirst, timeSecond, value, countSend);
-    }
-
-    function SendLot(
-        address _sender,
-        uint256 _price,
-        uint256 _timeFirst,
-        uint256 _timeSecond,
-        uint256 _value
-    ) public onlyGroup {
-        ILot lot = ILot(lotAddr);
-        require(
-            lot.PreSend(_sender, _price, _timeFirst, _timeSecond, _value),
-            "Not verify lot!"
-        );
-        require(addr.balance >= _value, "Not enoungh eth on contract round!");
-        IExchangeTest exchange = IExchangeTest(exchangeAddress);
-        exchange.EthToToken{value: _value}();
-        emit SendLotEvent(_sender, _price, _timeFirst, _timeSecond, _value);
-    }
-
-    function ReceiveLot(
-        address _sender,
-        uint256 _price,
-        uint256 _timeFirst,
-        uint256 _timeSecond,
-        uint256 _value
-    ) public onlyGroup {
-        ILot lot = ILot(lotAddr);
-        require(
-            lot.PreSend(_sender, _price, _timeFirst, _timeSecond, _value),
-            "Not verify lot!"
-        );
-
-        IExchangeTest exchange = IExchangeTest(exchangeAddress);
-
-        uint256 bal = addr.balance;
-        exchange.TokenToEth(exchange.GetTokenBalance());
-        uint256 delta = addr.balance - bal;
-
-        emit ReceiveLotEvent(
-            _sender,
-            _price,
-            _timeFirst,
-            _timeSecond,
-            _value,
-            delta
-        );
-    }
-
-    function GetSnap() public view returns (uint256) {
-        ILot lot = ILot(lotAddr);
-        return lot.GetSnap();
-    }
-
-    function GetBalance() public view returns (uint256) {
-        return addr.balance;
-    }
-    
-    function GetSnapshot() public view returns(uint256){
-        return snapshot;
-    }
-
-    function GetInitSnap() public pure returns(uint256){
-        return 115792089237316195423570985008687907853269984665640564039457584007913129639935;
-    }
 }

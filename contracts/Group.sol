@@ -5,6 +5,7 @@ import "./Round.sol";
 import "./interfaces/IRound.sol";
 
 import "./libraries/Proof.sol";
+import "./libraries/Player.sol";
 
 import "hardhat/console.sol";
 
@@ -87,46 +88,41 @@ contract Group {
     }
 
 
-    function FinalLot(
-        address[] memory senders,
-        uint256[] memory prices,
-        uint256 timeFirst,
-        uint256 timeSecond,
-        uint256 value,
-        uint256 countSend
-    ) public {
-        IRound round = IRound(roundAddr);
-        round.FinalLot(
-            senders,
-            prices,
-            timeFirst,
-            timeSecond,
-            value,
-            countSend
-        );
-    }
 
     function SendLot(
-        address _sender,
-        uint256 _price,
         uint256 _timeFirst,
         uint256 _timeSecond,
         uint256 _value
-    ) public {
+    ) public{
         IRound round = IRound(roundAddr);
-        round.SendLot(_sender, _price, _timeFirst, _timeSecond, _value);
+        round.SendLot(_timeFirst, _timeSecond, _value);
     }
 
     function ReceiveLot(
-        address _sender,
-        uint256 _price,
         uint256 _timeFirst,
         uint256 _timeSecond,
-        uint256 _value
+        uint256 _value,
+        address _addr,
+        uint256 _price,
+        uint _H1,
+        uint _H2,
+        uint _balance,
+        uint _prevSnap
     ) public {
+        Proof.ProofRes memory proof = Proof.NewProof(
+            _addr,
+            _price,
+            _H1,
+            _H2,
+            _balance
+        );
+        proof.prevSnap = _prevSnap;
+
         IRound round = IRound(roundAddr);
-        round.ReceiveLot(_sender, _price, _timeFirst, _timeSecond, _value);
+        round.ReceiveLot(_timeFirst, _timeSecond, _value, proof);
     }
+
+    
 
     function TryVerifyFull(
     address[] calldata _owners, 
@@ -183,5 +179,9 @@ contract Group {
     function GetInitSnapRound() public view returns(uint256){
         IRound round = IRound(roundAddr);
         return round.GetInitSnap();
+    }
+
+    function GetBalance() public view returns(uint256){
+        return address(this).balance;
     }
 }

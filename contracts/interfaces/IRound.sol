@@ -16,7 +16,8 @@ interface IRound {
     ) external;
 
     function BuyLot(
-        Proof.ProofRes memory proof
+        Proof.ProofRes memory proof,
+        Proof.ProofEnoungPrice memory proofEP 
     ) external;
 
     function JoinLot(
@@ -47,31 +48,7 @@ interface IRound {
         Proof.ProofRes memory proof
     ) external;
 
-    function VerifyFull(
-    address[] calldata _owners, 
-    uint256[] calldata _prices,
-    uint256 _timeFirst, 
-    uint256 _timeSecond, 
-    uint256 _value
-    ) external view; 
-
-    function VerifyOwner(
-        address[] memory _owners, 
-        uint256[] memory _prices, 
-        address[] memory _support,
-        uint256[] memory _additives,
-        uint256[] memory _sizes,
-        uint256 _snap
-    ) external view;
-
-    function CorrectOwner(
-        address[] memory _owners, 
-        uint256[] memory _prices,
-        address[] memory _support,
-        uint256[] memory _additives,
-        uint256 [] memory _sizes, 
-        uint256 _snap
-    ) external;
+   
 
     function GetSnap() external view returns (uint256);
 

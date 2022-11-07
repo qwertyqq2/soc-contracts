@@ -59,13 +59,21 @@ contract Lot {
         lastCommit = block.timestamp;
         snapshot = uint256(
             keccak256(
-                abi.encodePacked(timeFirst, timeSecond, owner, price, value)
+                abi.encodePacked(
+                    owner, 
+                    price, 
+                    uint(0)
+                )
             )
         );
 
         snapshot1 = uint256(
             keccak256(
-                abi.encodePacked(timeFirst, timeSecond, value)
+                abi.encodePacked(
+                    timeFirst, 
+                    timeSecond, 
+                    value
+                )
             )
         );
 
@@ -75,26 +83,52 @@ contract Lot {
     }
 
 
-    function Buy(address sender, uint256 newPrice) public onlyRound {
+    modifier correctPrice(Proof.ProofEnoungPrice memory proof, uint newPrice) {
+        uint proofSnap = Proof.GetProofEnoughPrice(proof);
+        require(proofSnap == snapshot, "Not right previous owner");
+        require(newPrice>proof.prevPrice, "New price less than old");
+        _;
+    }
+
+    function Buy(
+        address sender, 
+        uint256 newPrice,
+        Proof.ProofEnoungPrice memory proof
+        ) public onlyRound correctPrice(proof, newPrice){
         require(exist == true, "Already not exist");
         require(block.timestamp + lastCommit> 10, "Early");
         snapshot = uint256(
-            keccak256(abi.encodePacked(sender, newPrice, snapshot))
+            keccak256(
+                abi.encodePacked(
+                    sender, 
+                    newPrice, 
+                    snapshot
+                )
+            )
         );
         if (newPrice <= 0) {
             exist = false;
         }
         lastCommit = block.timestamp;
         emit BuyLot(sender, newPrice, snapshot);
-        //console.log("Buy lot: ", sender, newPrice);
+        console.log("Buy lot: ", sender, newPrice);
     }
 
 
-    function Join(address sender, uint256 rate) public onlyRound{
+    function Join(
+        address sender, 
+        uint256 rate
+        ) public onlyRound{
         require(exist, "Already not exist");
         require(rate > 0, "Not ehoung rate!");
         snapshot = uint256(
-            keccak256(abi.encodePacked(sender, rate, snapshot))
+            keccak256(
+                abi.encodePacked(
+                    sender, 
+                    rate, 
+                    snapshot
+                )
+            )
         );
 
         emit JoinLot(sender, rate, snapshot);
@@ -155,10 +189,14 @@ contract Lot {
         uint256 value
     ) public pure returns(uint256){
         return uint256(
-            keccak256(
-                abi.encodePacked(timeFirst, timeSecond, value)
-            )
-        );
+                keccak256(
+                    abi.encodePacked(
+                        timeFirst, 
+                        timeSecond, 
+                        value
+                    )
+                )
+            );
     }
 
 
@@ -166,73 +204,6 @@ contract Lot {
         return snapshot;
     }
 
-
-    function verifyFull(
-    address[] calldata _owners, 
-    uint256[] calldata _prices, 
-    uint256 _timeFirst, 
-    uint256 _timeSecond, 
-    uint256 _value
-    ) public  view onlyRound{
-        require(exist == true, "Already not exist");
-        console.log("Verify Full");
-
-        uint256 _snapPoint = uint256(
-            keccak256(
-                abi.encodePacked(_timeFirst, _timeSecond, _owners[0], _prices[0], _value)
-            )
-        );
-
-        for(uint i=1;i<_owners.length;i++){
-            _snapPoint = uint256(
-                keccak256(abi.encodePacked(_owners[i], _prices[i], _snapPoint))
-            );
-        }
-        require(_snapPoint == snapshot, "Not right verify");
-
-    }
-
-
-    function verifyOwner(
-        address[] memory _owners, 
-        uint256[] memory _prices,
-        address[] memory _support,
-        uint256[] memory _additives,
-        uint256 [] memory _sizes,
-        uint256 _snap
-        ) public view{
-        console.log("Verify Owner");
-        uint counter;
-
-        for(uint i=0;i<_owners.length;i++){
-            _snap = uint256(
-                keccak256(abi.encodePacked(_owners[i], _prices[i], _snap))
-            );
-
-            for(uint j = counter;j< counter+_sizes[i]; j++){
-                _snap = uint256(
-                    keccak256(abi.encodePacked(_support[j], _additives[j], _snap))
-                );
-            }
-            counter+=_sizes[i];
-        }
-        require(_snap == snapshot, "Not right verify");
-        require(_prices[0]>_prices[1], "No mistake");
-    }
-
-
-    function CorrectOwner(
-        address[] memory _owners, 
-        uint256[] memory _prices,
-        address[] memory _support,
-        uint256[] memory _additives,
-        uint256 [] memory _sizes,
-        uint256 _snap
-        ) public{
-        verifyOwner(_owners, _prices, _support, _additives, _sizes, _snap);
-        snapshot = _snap;
-        console.log("Snapshot is change");
-    }
 
     
 }

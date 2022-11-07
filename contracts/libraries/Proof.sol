@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "hardhat/console.sol";
 
 library Proof {
     struct ProofRes{
@@ -18,7 +19,7 @@ library Proof {
         uint _H1,
         uint _H2,
         uint _balance
-    ) public pure returns(ProofRes memory){
+    ) external pure returns(ProofRes memory){
         ProofRes memory proof;
         proof.addr = _addr;
         proof.price = _price;
@@ -30,20 +31,49 @@ library Proof {
 
 
     function snap(ProofRes memory proof) internal pure returns(uint256) {
-        return uint256(keccak256(abi.encodePacked(uint256(uint160(proof.addr)), " ", proof.balance)));
+        return uint256(
+                keccak256(
+                    abi.encodePacked(uint256(uint160(proof.addr)), proof.balance)
+                    )
+                );
     }
 
     function GetProofBalance(ProofRes memory proof) public pure returns(uint256){
         uint s = snap(proof);
-        return xor(xor(proof.H1, s), proof.H2);
+        return uint256(keccak256(abi.encode(xor(xor(proof.H1, s), proof.H2))));
     } 
 
 
-    function GetProofOwner(ProofRes memory proof) public pure returns(uint256){
+    function GetProofOwner(ProofRes memory proof) external pure returns(uint256){
         return uint256(
-            keccak256(abi.encodePacked(proof.addr, proof.price, proof.prevSnap))
-        );
+            keccak256(
+                abi.encodePacked(
+                    proof.addr, 
+                    proof.price, 
+                    proof.prevSnap
+                    )
+                )
+            );
     }
+
+    struct ProofEnoungPrice{
+        address prevOwner;
+        uint prevPrice;
+        uint prevSnap;
+    }
+
+    function NewProofEnoughPrice(address _prevOwner, uint _prevPrice, uint _prevSnap) external pure returns(ProofEnoungPrice memory){
+        ProofEnoungPrice memory proof;
+        proof.prevOwner = _prevOwner;
+        proof.prevPrice = _prevPrice;
+        proof.prevSnap = _prevSnap;
+        return proof;
+    }
+
+    function GetProofEnoughPrice(ProofEnoungPrice memory proof) external pure returns(uint256){
+        return  uint256(keccak256(abi.encodePacked(proof.prevOwner, proof.prevPrice, proof.prevSnap)));
+    }
+
 
     function xor(uint a, uint b) internal pure returns(uint256){
         return a^b;

@@ -69,11 +69,15 @@ contract Group {
         uint256 _price,
         uint _H1,
         uint _H2,
-        uint256 _balance
+        uint256 _balance,
+        address _prevOwner,
+        uint256 _prevPrice,
+        uint256 _prevSnap
         ) public {
-        Proof.ProofRes memory proof = Proof.NewProof(msg.sender, _price, _H1, _H2, _balance);
+        Proof.ProofRes memory proofRes = Proof.NewProof(msg.sender, _price, _H1, _H2, _balance);
+        Proof.ProofEnoungPrice memory proofEP = Proof.NewProofEnoughPrice(_prevOwner, _prevPrice, _prevSnap);
         IRound round = IRound(roundAddr);
-        round.BuyLot(proof);
+        round.BuyLot(proofRes, proofEP);
     }
 
     function JoinLot(
@@ -123,44 +127,6 @@ contract Group {
     }
 
     
-
-    function TryVerifyFull(
-    address[] calldata _owners, 
-    uint256[] calldata _prices,
-    uint256 _timeFirst, 
-    uint256 _timeSecond, 
-    uint256 _value
-    )
-     public view{
-        IRound round = IRound(roundAddr);
-        round.VerifyFull(_owners, _prices, _timeFirst, _timeSecond, _value);
-    }
-
-    
-    function TryVerifyOwner(
-        address[] memory _owners, 
-        uint256[] memory _prices, 
-        address[] memory _support,
-        uint256[] memory _additives,
-        uint256[] memory _sizes,
-        uint256 _snap
-    ) public view{
-        IRound round = IRound(roundAddr);
-        round.VerifyOwner(_owners, _prices, _support, _additives, _sizes, _snap);
-    }
-
-
-    function Correct(
-        address[] memory _owners, 
-        uint256[] memory _prices,
-        address[] memory _support,
-        uint256[] memory _additives,
-        uint256[] memory _sizes,
-        uint256 _snap
-    ) public{
-        IRound round = IRound(roundAddr);
-        round.CorrectOwner(_owners, _prices, _support, _additives, _sizes, _snap);
-    }
 
     function GetSnap() public view returns (uint256) {
         IRound round = IRound(roundAddr);

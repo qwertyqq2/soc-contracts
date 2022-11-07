@@ -23,7 +23,11 @@ interface ILot {
         uint256 value
     ) external;
 
-    function Buy(address sender, uint256 newPrice) external;
+    function Buy(
+        address sender, 
+        uint256 newPrice,
+        Proof.ProofEnoungPrice memory proof
+        ) external;
 
 
     function Join(
@@ -47,32 +51,6 @@ interface ILot {
     function SetReceiveTokens(uint _receiveTokens) external;
 
     function GetReceiveTokens() external view returns(uint);
-
-    function verifyFull(
-    address[] memory _owners,
-    uint256[] memory _prices, 
-    uint256 _timeFirst, 
-    uint256 _timeSecond, 
-    uint256 _value
-    ) external view ;
-
-    function verifyOwner(
-        address[] memory _owners, 
-        uint256[] memory _prices,
-        address[] memory _support,
-        uint256[] memory _additives,
-        uint256 [] memory _sizes,
-        uint256 _snap
-        ) external view;
-
-    function CorrectOwner(
-    address[] memory _owners, 
-    uint256[] memory _prices, 
-    address[] memory _support,
-    uint256[] memory _additives,
-    uint256 [] memory _sizes,
-    uint256 _snap
-    ) external;
 
     function Return(uint256 _snap) external;
 

@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import "./interfaces/IGroup.sol";
 import "./interfaces/IExchangeTest.sol";
 import "./interfaces/ILot.sol";
+import "./interfaces/IRound.sol";
+
 
 import "./libraries/Proof.sol";
 import "./libraries/Math.sol";
@@ -29,7 +31,7 @@ contract Round {
 
     address lotAddr;
 
-    uint256 snapshot = 115792089237316195423570985008687907853269984665640564039457584007913129639935;
+    uint256 balancesSnap = 115792089237316195423570985008687907853269984665640564039457584007913129639935;
 
 
     constructor(uint256 _deposit) {
@@ -84,9 +86,15 @@ contract Round {
         uint8 i=0;
         for (i = 0; i < pendingAddress.length; i++) {
             pendingPlayers[pendingAddress[i]] = 0;
-            snapshot = Math.xor(snapshot, uint256(keccak256(abi.encodePacked(
-                uint256(uint160(pendingAddress[i])), " ", deposit))));
+            balancesSnap = Math.xor(balancesSnap, uint256(
+                                                    keccak256(abi.encodePacked(
+                                                        uint256(uint160(pendingAddress[i])), 
+                                                        deposit
+                                                        )))
+                                        );
         }
+
+        balancesSnap = uint256(keccak256(abi.encode(balancesSnap)));
         timeCreation = block.timestamp;
 
    
@@ -99,7 +107,7 @@ contract Round {
     
     modifier enoughRes(Proof.ProofRes memory proof){
         uint res = Proof.GetProofBalance(proof);
-        require(res == snapshot, "Not proof");
+        require(res == balancesSnap, "Not proof");
         require(proof.price<=proof.balance, "Not enoung res");
         _;
     }
@@ -115,10 +123,11 @@ contract Round {
     }
 
     function BuyLot(
-        Proof.ProofRes memory proof
-     ) public onlyGroup enoughRes(proof) {
+        Proof.ProofRes memory proofRes, 
+        Proof.ProofEnoungPrice memory proofEP 
+     ) public onlyGroup enoughRes(proofRes) {
         ILot lot = ILot(lotAddr);
-        lot.Buy(proof.addr, proof.price);
+        lot.Buy(proofRes.addr, proofRes.price, proofEP);
     }
 
     function JoinLot(
@@ -158,12 +167,6 @@ contract Round {
         exc.TokenToEth(val);
         uint res = address(this).balance - initBal;
         console.log("Lot received") ;
-        if(res>0){
-            snapshot = Player.UpdatePlus(proof.addr, proof.balance, proof.price, proof.H1, proof.H2);
-        }
-        else{
-            snapshot = Player.UpdateMinus(proof.addr, proof.balance, proof.price, proof.H1, proof.H2);
-        }
 
     }
 
@@ -177,7 +180,7 @@ contract Round {
     }
     
     function GetSnapshot() public view returns(uint256){
-        return snapshot;
+        return balancesSnap;
     }
 
     function GetInitSnap() public pure returns(uint256){
@@ -190,41 +193,5 @@ contract Round {
 
 
 
-    function VerifyFull(
-    address[] calldata _owners, 
-    uint256[] calldata _prices,
-    uint256 _timeFirst, 
-    uint256 _timeSecond, 
-    uint256 _value
-    ) public view {
-        ILot lot = ILot(lotAddr);
-        lot.verifyFull(_owners, _prices, _timeFirst, _timeSecond, _value);
-    }
-
-
-    function VerifyOwner(
-        address[] memory _owners, 
-        uint256[] memory _prices, 
-        address[] memory _support,
-        uint256[] memory _additives,
-        uint256[] memory _sizes,
-        uint256 _snap
-    ) public view{
-        ILot lot = ILot(lotAddr);
-        lot.verifyOwner(_owners, _prices, _support, _additives, _sizes, _snap);
-    }
-
-
-    function CorrectOwner(
-        address[] memory _owners, 
-        uint256[] memory _prices,
-        address[] memory _support,
-        uint256[] memory _additives,
-        uint256 [] memory _sizes, 
-        uint256 _snap
-    ) public{
-        ILot lot = ILot(lotAddr);
-        lot.CorrectOwner(_owners, _prices, _support, _additives, _sizes, _snap);
-    }
     
 }

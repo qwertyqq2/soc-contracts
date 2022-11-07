@@ -11,7 +11,7 @@ library Math {
     }
 
 
-    function GetSnap(address addr, uint balance) public pure returns(uint256){
+    function GetSnap(address addr, uint balance) external pure returns(uint256){
         return uint256(
                 keccak256(
                     abi.encodePacked(

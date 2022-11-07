@@ -30,7 +30,7 @@ library Proof {
     }
 
 
-    function snap(ProofRes memory proof) internal pure returns(uint256) {
+    function snap(ProofRes calldata proof) internal pure returns(uint256) {
         return uint256(
                 keccak256(
                     abi.encodePacked(uint256(uint160(proof.addr)), proof.balance)
@@ -38,13 +38,13 @@ library Proof {
                 );
     }
 
-    function GetProofBalance(ProofRes memory proof) public pure returns(uint256){
+    function GetProofBalance(ProofRes calldata proof) public pure returns(uint256){
         uint s = snap(proof);
         return uint256(keccak256(abi.encode(xor(xor(proof.H1, s), proof.H2))));
     } 
 
 
-    function GetProofOwner(ProofRes memory proof) external pure returns(uint256){
+    function GetProofOwner(ProofRes calldata proof) external pure returns(uint256){
         return uint256(
             keccak256(
                 abi.encodePacked(
@@ -70,7 +70,7 @@ library Proof {
         return proof;
     }
 
-    function GetProofEnoughPrice(ProofEnoungPrice memory proof) external pure returns(uint256){
+    function GetProofEnoughPrice(ProofEnoungPrice calldata proof) external pure returns(uint256){
         return  uint256(keccak256(abi.encodePacked(proof.prevOwner, proof.prevPrice, proof.prevSnap)));
     }
 

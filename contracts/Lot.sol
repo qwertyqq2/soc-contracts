@@ -83,7 +83,7 @@ contract Lot {
     }
 
 
-    modifier correctPrice(Proof.ProofEnoungPrice memory proof, uint newPrice) {
+    modifier correctPrice(Proof.ProofEnoungPrice calldata proof, uint newPrice) {
         uint proofSnap = Proof.GetProofEnoughPrice(proof);
         require(proofSnap == snapshot, "Not right previous owner");
         require(newPrice>proof.prevPrice, "New price less than old");
@@ -93,7 +93,7 @@ contract Lot {
     function Buy(
         address sender, 
         uint256 newPrice,
-        Proof.ProofEnoungPrice memory proof
+        Proof.ProofEnoungPrice calldata proof
         ) public onlyRound correctPrice(proof, newPrice){
         require(exist == true, "Already not exist");
         require(block.timestamp + lastCommit> 10, "Early");
@@ -145,7 +145,7 @@ contract Lot {
         _;
     }
 
-    modifier proofOwner(Proof.ProofRes memory proof){
+    modifier proofOwner(Proof.ProofRes calldata proof){
         uint snap = Proof.GetProofOwner(proof);
         require(snap == snapshot, "Not right proof owner");
         _;
@@ -174,7 +174,7 @@ contract Lot {
         uint256 _timeFirst,
         uint256 _timeSecond,
         uint256 _value,
-        Proof.ProofRes memory proof
+        Proof.ProofRes calldata proof
     ) public onlyRound proofInit(_timeFirst, _timeSecond, _value) proofOwner(proof){
         require(wait == true, "not wait");
         require(block.timestamp>0);

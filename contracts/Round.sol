@@ -105,7 +105,7 @@ contract Round {
 
 
     
-    modifier enoughRes(Proof.ProofRes memory proof){
+    modifier enoughRes(Proof.ProofRes calldata proof){
         uint res = Proof.GetProofBalance(proof);
         require(res == balancesSnap, "Not proof");
         require(proof.price<=proof.balance, "Not enoung res");
@@ -116,22 +116,22 @@ contract Round {
         uint256 _timeFirst,
         uint256 _timeSecond,
         uint256 _val,
-        Proof.ProofRes memory proof
+        Proof.ProofRes calldata proof
     ) public onlyGroup enoughRes(proof) {
         ILot lot = ILot(lotAddr);
         lot.New(_timeFirst, _timeSecond, proof.addr, proof.price, _val);
     }
 
     function BuyLot(
-        Proof.ProofRes memory proofRes, 
-        Proof.ProofEnoungPrice memory proofEP 
+        Proof.ProofRes calldata proofRes, 
+        Proof.ProofEnoungPrice calldata proofEP 
      ) public onlyGroup enoughRes(proofRes) {
         ILot lot = ILot(lotAddr);
         lot.Buy(proofRes.addr, proofRes.price, proofEP);
     }
 
     function JoinLot(
-        Proof.ProofRes memory proof
+        Proof.ProofRes calldata proof
     ) public onlyGroup enoughRes(proof) {
         ILot lot = ILot(lotAddr);
         lot.Join(proof.addr, proof.price);
@@ -157,7 +157,7 @@ contract Round {
         uint256 _timeFirst,
         uint256 _timeSecond,
         uint256 _value,
-        Proof.ProofRes memory proof
+        Proof.ProofRes calldata proof
     )  public onlyGroup{
         IExchangeTest exc = IExchangeTest(exchangeAddress);
         ILot lot = ILot(lotAddr);

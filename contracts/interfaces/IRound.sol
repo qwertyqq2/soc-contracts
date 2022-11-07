@@ -26,14 +26,6 @@ interface IRound {
 
     function GetPlayer(address player) external view returns (uint256);
 
-    function FinalLot(
-        address[] memory senders,
-        uint256[] memory prices,
-        uint256 timeFirst,
-        uint256 timeSecond,
-        uint256 value,
-        uint256 countSend
-    ) external;
 
     function SendLot(
         uint256 _timeFirst,

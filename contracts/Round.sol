@@ -130,12 +130,6 @@ contract Round {
         lot.Buy(proofRes.addr, proofRes.price, proofEP);
     }
 
-    function JoinLot(
-        Proof.ProofRes calldata proof
-    ) public onlyGroup enoughRes(proof) {
-        ILot lot = ILot(lotAddr);
-        lot.Join(proof.addr, proof.price);
-    }
     
 
     function SendLot(

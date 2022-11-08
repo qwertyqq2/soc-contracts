@@ -80,18 +80,6 @@ contract Group {
         round.BuyLot(proofRes, proofEP);
     }
 
-    function JoinLot(
-        uint256 _price,
-        uint _H1, 
-        uint _H2, 
-        uint256 _balance
-    ) public{
-        Proof.ProofRes memory proof = Proof.NewProof(msg.sender, _price, _H1, _H2, _balance);
-        IRound round = IRound(roundAddr);
-        round.JoinLot(proof);
-    }
-
-
 
     function SendLot(
         uint256 _timeFirst,

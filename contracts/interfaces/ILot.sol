@@ -29,12 +29,6 @@ interface ILot {
         Proof.ProofEnoungPrice memory proof
         ) external;
 
-
-    function Join(
-        address sender,
-        uint256 rate
-    ) external;
-
     function End(
         uint256 timeFirst,
         uint256 timeSecond,

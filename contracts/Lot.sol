@@ -115,26 +115,6 @@ contract Lot {
     }
 
 
-    function Join(
-        address sender, 
-        uint256 rate
-        ) public onlyRound{
-        require(exist, "Already not exist");
-        require(rate > 0, "Not ehoung rate!");
-        snapshot = uint256(
-            keccak256(
-                abi.encodePacked(
-                    sender, 
-                    rate, 
-                    snapshot
-                )
-            )
-        );
-
-        emit JoinLot(sender, rate, snapshot);
-        //console.log("Join lot: ", sender, rate);
-    }
-
 
     modifier proofInit(
         uint256 timeFirst,

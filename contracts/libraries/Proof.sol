@@ -38,7 +38,7 @@ library Proof {
                 );
     }
 
-    function GetProofBalance(ProofRes calldata proof) public pure returns(uint256){
+    function GetProofBalance(ProofRes calldata proof) external pure returns(uint256){
         uint s = snap(proof);
         return uint256(keccak256(abi.encode(xor(xor(proof.H1, s), proof.H2))));
     } 
@@ -71,7 +71,15 @@ library Proof {
     }
 
     function GetProofEnoughPrice(ProofEnoungPrice calldata proof) external pure returns(uint256){
-        return  uint256(keccak256(abi.encodePacked(proof.prevOwner, proof.prevPrice, proof.prevSnap)));
+        return  uint256(
+            keccak256(
+                abi.encodePacked(
+                    proof.prevOwner, 
+                    proof.prevPrice, 
+                    proof.prevSnap
+                    )
+                )
+            );
     }
 
 

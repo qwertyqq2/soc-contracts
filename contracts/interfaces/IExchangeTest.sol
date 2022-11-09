@@ -8,5 +8,9 @@ interface IExchangeTest {
 
     function EthToToken() external payable;
 
+    function EthToTokenVirtual(uint _value) external pure returns(uint256);
+
     function TokenToEth(uint256 val) external payable;
+
+    function TokenToEthVirtual(uint256 _value) external pure returns(uint256);
 }

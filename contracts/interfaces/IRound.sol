@@ -41,6 +41,26 @@ interface IRound {
     ) external;
 
    
+    function CancelLot(
+        Proof.ProofRes calldata proofRes, 
+        Proof.ProofEnoungPrice calldata proofEP
+    ) external;
+
+
+    function SendCanceled(
+        uint256 _timeFirst,
+        uint256 _timeSecond,
+        uint256 _value,
+        address _sender
+    ) external;
+
+
+    function ReceiveCanceled(
+        uint256 _timeFirst,
+        uint256 _timeSecond,
+        uint256 _value,
+        address _sender
+    ) external;
 
     function GetSnap() external view returns (uint256);
 

@@ -23,10 +23,18 @@ contract ExchangeTest {
         balancesToken[msg.sender] += msg.value;
     }
 
+    function EthToTokenVirtual(uint _value) public pure returns(uint256){
+        return _value;
+    }
+
     function TokenToEth(uint256 val) public payable {
         require(addr.balance >= val, "Not enougt eth");
         require(msg.sender == owner, "Not a round");
         balancesToken[msg.sender] -= val;
         payable(msg.sender).transfer(val);
+    }
+
+    function TokenToEthVirtual(uint256 _value) public pure returns(uint256){
+        return _value+1;
     }
 }

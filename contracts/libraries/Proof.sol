@@ -82,6 +82,23 @@ library Proof {
             );
     }
 
+    function NewBalanceSnap(ProofRes calldata proof, uint _value) external pure returns(uint256){
+
+        uint snapOwner = uint256(
+                keccak256(
+                    abi.encodePacked(uint256(uint160(proof.addr)), _value)
+                    )
+                );
+
+        return uint256(
+            keccak256(
+                abi.encode(
+                    xor(xor(proof.H1, snapOwner), proof.H2)
+                )
+            )
+        );
+    }
+
 
     function xor(uint a, uint b) internal pure returns(uint256){
         return a^b;

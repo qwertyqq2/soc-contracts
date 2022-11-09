@@ -160,8 +160,55 @@ contract Round {
         uint val = exc.GetTokenBalance();
         exc.TokenToEth(val);
         uint res = address(this).balance - initBal;
-        console.log("Lot received") ;
+        console.log("Lot received");
 
+    }
+
+
+    function CancelLot(
+        Proof.ProofRes calldata proofRes, 
+        Proof.ProofEnoungPrice calldata proofEP
+    ) external enoughRes(proofRes){
+        ILot lot = ILot(lotAddr);
+        lot.Cancel(proofRes.addr, proofEP.prevPrice, proofEP);
+        console.log("Lot is canceled");
+    }
+
+    function SendCanceled(
+        uint256 _timeFirst,
+        uint256 _timeSecond,
+        uint256 _value,
+        address _sender
+    ) external onlyGroup{
+        IExchangeTest exc = IExchangeTest(exchangeAddress);
+        ILot lot = ILot(lotAddr);
+        lot.EndCancel(_timeFirst, _timeSecond, _value, _sender);
+        uint count = exc.EthToTokenVirtual(_value);
+        lot.SetReceiveTokens(count);
+        console.log("Canceled send");
+    }
+
+    function ReceiveCanceled(
+        uint256 _timeFirst,
+        uint256 _timeSecond,
+        uint256 _value,
+        address _sender
+    ) external onlyGroup{
+        IExchangeTest exc = IExchangeTest(exchangeAddress);
+        ILot lot = ILot(lotAddr);
+        lot.CloseCancel(_timeFirst, _timeSecond, _value, _sender);
+        uint count = lot.GetReceiveTokens();
+        uint res = exc.TokenToEthVirtual(count);
+        if(res<0){
+            console.log("it was in vain");
+        }
+        else{
+            console.log("You`re right");
+        }
+    }
+
+    function setBalance(Proof.ProofRes calldata proof, uint _value) internal {
+        balancesSnap = Proof.NewBalanceSnap(proof, _value);
     }
 
     function GetSnap() public view returns (uint256) {

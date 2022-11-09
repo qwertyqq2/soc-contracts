@@ -18,8 +18,7 @@ contract Lot {
 
     uint256 lastCommit;
 
-    bool exist = true;
-    bool wait = false;
+    uint state;
 
     uint receiveToken;
     
@@ -42,6 +41,7 @@ contract Lot {
     constructor(uint256 num ) {
         numberLot = num;
         roundAddr = msg.sender;
+        state = uint256(keccak256(abi.encode("closed")));
     }
 
     modifier onlyRound() {
@@ -55,7 +55,8 @@ contract Lot {
         address owner,
         uint256 price,
         uint256 value
-    ) public onlyRound {
+    ) external onlyRound {
+        require(state == uint256(keccak256(abi.encode("closed"))), "Not new");
         lastCommit = block.timestamp;
         snapshot = uint256(
             keccak256(
@@ -77,6 +78,7 @@ contract Lot {
             )
         );
 
+        state = uint256(keccak256(abi.encode("empty")));
         
         emit NewLot(timeFirst, timeSecond, owner, price, value, snapshot);
         //console.log("New lot: ", owner, price);
@@ -94,8 +96,8 @@ contract Lot {
         address sender, 
         uint256 newPrice,
         Proof.ProofEnoungPrice calldata proof
-        ) public onlyRound correctPrice(proof, newPrice){
-        require(exist == true, "Already not exist");
+        ) external onlyRound correctPrice(proof, newPrice){
+        require(state == uint256(keccak256(abi.encode("empty"))), "not empty");
         require(block.timestamp + lastCommit> 10, "Early");
         snapshot = uint256(
             keccak256(
@@ -106,14 +108,10 @@ contract Lot {
                 )
             )
         );
-        if (newPrice <= 0) {
-            exist = false;
-        }
         lastCommit = block.timestamp;
         emit BuyLot(sender, newPrice, snapshot);
         console.log("Buy lot: ", sender, newPrice);
     }
-
 
 
     modifier proofInit(
@@ -131,24 +129,16 @@ contract Lot {
         _;
 
     }
+
+
     function End(
         uint256 _timeFirst,
         uint256 _timeSecond,
         uint256 _value
         ) public onlyRound proofInit(_timeFirst, _timeSecond, _value) {
         require(block.timestamp> 0, "Not correct time");
-        wait = true;
+        state = uint256(keccak256(abi.encode("wait")));
     }
-
-    function SetReceiveTokens(uint _receiveTokens) public onlyRound{
-        require(_receiveTokens>0, "uncorrect value");
-        receiveToken = _receiveTokens;
-    }
-
-    function GetReceiveTokens() public view returns(uint){
-        return receiveToken;
-    }
-
 
     function Close(
         uint256 _timeFirst,
@@ -156,9 +146,48 @@ contract Lot {
         uint256 _value,
         Proof.ProofRes calldata proof
     ) public onlyRound proofInit(_timeFirst, _timeSecond, _value) proofOwner(proof){
-        require(wait == true, "not wait");
-        require(block.timestamp>0);
-        exist = false;
+        require(state == uint256(keccak256(abi.encode("wait"))), "not wait");
+        require(block.timestamp>0, "Not correct time");
+        state = uint256(keccak256(abi.encode("closed")));
+    }
+
+
+
+    modifier correctCancel(Proof.ProofEnoungPrice calldata proof){
+        uint proofSnap = Proof.GetProofEnoughPrice(proof);
+        require(proofSnap == snapshot, "Not right previous owner");
+        _;
+    }
+
+    function Cancel(
+        address _sender,
+        uint _price,
+        Proof.ProofEnoungPrice calldata proof
+    ) public onlyRound correctCancel(proof){
+        require(_price == proof.prevPrice, "Not correct price");
+        state = uint256(keccak256(abi.encodePacked("canceled", _sender)));
+    }
+
+    function EndCancel(
+        uint256 _timeFirst,
+        uint256 _timeSecond,
+        uint256 _value,
+        address _sender
+        ) public onlyRound proofInit(_timeFirst, _timeSecond, _value) {
+        require(state == uint256(keccak256(abi.encodePacked("canceled", _sender))));
+        require(block.timestamp> 0, "Not correct time");
+        state = uint256(keccak256(abi.encodePacked("wait canceled", _sender)));
+    }
+
+    function CloseCancel(
+        uint256 _timeFirst,
+        uint256 _timeSecond,
+        uint256 _value,
+        address _sender
+    ) public onlyRound proofInit(_timeFirst, _timeSecond, _value){
+        require(state == uint256(keccak256(abi.encodePacked("wait canceled", _sender))));
+        require(block.timestamp>0, "Not correct time");
+        state = uint256(keccak256(abi.encode("closed")));
     }
 
 
@@ -179,6 +208,15 @@ contract Lot {
             );
     }
 
+
+    function SetReceiveTokens(uint _receiveTokens) public onlyRound{
+        require(_receiveTokens>0, "uncorrect value");
+        receiveToken = _receiveTokens;
+    }
+
+    function GetReceiveTokens() public view returns(uint){
+        return receiveToken;
+    }
 
      function GetSnap() public view returns (uint256) {
         return snapshot;

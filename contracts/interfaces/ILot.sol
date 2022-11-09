@@ -42,6 +42,28 @@ interface ILot {
         Proof.ProofRes memory proof
     ) external;
 
+    function Cancel(
+        address _sender,
+        uint _price,
+        Proof.ProofEnoungPrice calldata proof
+    ) external;
+
+
+    function EndCancel(
+        uint256 _timeFirst,
+        uint256 _timeSecond,
+        uint256 _value,
+        address _sender
+        ) external;
+
+
+    function CloseCancel(
+        uint256 _timeFirst,
+        uint256 _timeSecond,
+        uint256 _value,
+        address _sender
+    ) external;
+
     function SetReceiveTokens(uint _receiveTokens) external;
 
     function GetReceiveTokens() external view returns(uint);

@@ -5,12 +5,12 @@ import "hardhat/console.sol";
 
 
 library Player {
-    function UpdatePlus(address owner, uint balance, uint price, uint H1, uint H2) public pure returns(uint256){
+    function UpdatePlus(address owner, uint balance, uint H1, uint H2) public pure returns(uint256){
         uint snap = uint256(keccak256(abi.encodePacked(uint256(uint160(owner)), " ", balance+1)));
         return xor(xor(H1, snap), H2);
     }
 
-    function UpdateMinus(address owner, uint balance, uint price, uint H1, uint H2) public pure returns(uint256){
+    function UpdateMinus(address owner, uint balance, uint H1, uint H2) public pure returns(uint256){
         uint snap = uint256(keccak256(abi.encodePacked(uint256(uint160(owner)), " ", balance-1)));
         return xor(xor(H1, snap), H2);
     }

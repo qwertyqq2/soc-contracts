@@ -114,7 +114,41 @@ contract Group {
         round.ReceiveLot(_timeFirst, _timeSecond, _value, proof);
     }
 
-    
+    function CancelLot(
+        uint256 _currentPrice,
+        uint _H1,
+        uint _H2,
+        uint256 _balance,
+        address _prevOwner,
+        uint256 _prevPrice,
+        uint256 _prevSnap
+        ) public {
+        Proof.ProofRes memory proofRes = Proof.NewProof(msg.sender, _currentPrice, _H1, _H2, _balance);
+        Proof.ProofEnoungPrice memory proofEP = Proof.NewProofEnoughPrice(_prevOwner, _prevPrice, _prevSnap);
+        IRound round = IRound(roundAddr);
+        round.CancelLot(proofRes, proofEP);
+
+    }
+
+    function SendCancelLot(
+        uint256 _timeFirst,
+        uint256 _timeSecond,
+        uint256 _value,
+        address _sender
+    )external{
+        IRound round = IRound(roundAddr);
+        round.SendCanceled(_timeFirst, _timeSecond, _value, _sender);
+    }
+
+    function ReceiveCancelLot(
+        uint256 _timeFirst,
+        uint256 _timeSecond,
+        uint256 _value,
+        address _sender
+    ) external{
+        IRound round = IRound(roundAddr);
+        round.ReceiveCanceled(_timeFirst, _timeSecond, _value, _sender);
+    }
 
     function GetSnap() public view returns (uint256) {
         IRound round = IRound(roundAddr);

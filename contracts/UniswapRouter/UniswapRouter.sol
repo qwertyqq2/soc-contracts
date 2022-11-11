@@ -5,8 +5,8 @@ import "hardhat/console.sol";
 
 
 import "./interfaces/ISwapRouter.sol";
-import "./interfaces/IERC20.sol";
 import "./interfaces/IQuoter.sol";
+import "./interfaces/IERC20.sol";
 
 
 
@@ -17,18 +17,8 @@ contract UniV3Test {
     address constant DAI = 0x11fE4B6AE13d2a6055C8D9cF65c55bac32B5d844;
     uint24 constant fee = 3000;
 
-    address roundAddr;
 
-    constructor(){
-        roundAddr = msg.sender;
-    }
-
-    modifier OnlyRound{
-        require(msg.sender == roundAddr);
-        _;
-    }
-
-    function swapWETHToDAI(uint amountIn) external OnlyRound returns(uint256 amountOut){
+    function swapWETHToDAI(uint amountIn) external returns(uint256 amountOut){
         uint balWETH = IWETH(WETH).balanceOf(address(this));
         require(balWETH>=amountIn, "Not enough eth on contract");
         IERC20(WETH).approve(address(router), amountIn);
@@ -48,15 +38,48 @@ contract UniV3Test {
         amountOut = router.exactInputSingle(params);
     }
 
+
+    function swapDAItoWETH(uint amountIn) external returns(uint256 amountOut){
+        uint balDAI = IERC20(DAI).balanceOf(address(this));
+        require(balDAI>=amountIn, "Not enough dai on contract");
+        IERC20(DAI).approve(address(router), amountIn);
+    
+        ISwapRouter.ExactInputSingleParams memory params =
+            ISwapRouter.ExactInputSingleParams({
+                tokenIn: DAI,
+                tokenOut: WETH,
+                fee: fee,
+                recipient: address(this),
+                deadline: block.timestamp,
+                amountIn: amountIn,
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            });
+        amountOut = router.exactInputSingle(params);
+    } 
+
+
+
     function Enter() external payable{
         IWETH(WETH).deposit{value: msg.value}();
     }
 
-    function ReadPrice(uint _amountIn) external returns(uint256){
+    function curPrice1(uint _amountIn) external returns(uint256){
         IQuoter quoter = IQuoter(0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6);
         return quoter.quoteExactInputSingle({
             tokenIn: WETH,
             tokenOut: DAI,
+            fee: fee,
+            amountIn: _amountIn,
+            sqrtPriceLimitX96: 0
+        });
+    }
+
+    function curPrice2(uint _amountIn) external returns(uint256){
+        IQuoter quoter = IQuoter(0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6);
+        return quoter.quoteExactInputSingle({
+            tokenIn: DAI,
+            tokenOut: WETH,
             fee: fee,
             amountIn: _amountIn,
             sqrtPriceLimitX96: 0
@@ -71,3 +94,4 @@ contract UniV3Test {
         return IERC20(DAI).balanceOf(address(this));
     }
 }
+

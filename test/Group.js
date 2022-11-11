@@ -141,7 +141,7 @@ describe.only("Snapshot players", async () => {
 
     })
 
-    it.only("Cancel", async () => {
+    it("Cancel", async () => {
         const mathLib = await ethers.getContractFactory("Math");
         const mlib = await mathLib.deploy();
         await mlib.deployed();

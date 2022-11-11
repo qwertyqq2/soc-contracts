@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity  ^0.7.0 || ^0.8.0;
 
 import "./interfaces/IExchangeTest.sol";
 
@@ -16,7 +16,6 @@ contract Lot {
     uint256 snapshot;
     uint256 snapshot1;
 
-    uint256 lastCommit;
 
     uint state;
 
@@ -57,7 +56,6 @@ contract Lot {
         uint256 value
     ) external onlyRound {
         require(state == uint256(keccak256(abi.encode("closed"))), "Not new");
-        lastCommit = block.timestamp;
         snapshot = uint256(
             keccak256(
                 abi.encodePacked(
@@ -98,7 +96,6 @@ contract Lot {
         Proof.ProofEnoungPrice calldata proof
         ) external onlyRound correctPrice(proof, newPrice){
         require(state == uint256(keccak256(abi.encode("empty"))), "not empty");
-        require(block.timestamp + lastCommit> 10, "Early");
         snapshot = uint256(
             keccak256(
                 abi.encodePacked(
@@ -108,7 +105,6 @@ contract Lot {
                 )
             )
         );
-        lastCommit = block.timestamp;
         emit BuyLot(sender, newPrice, snapshot);
         console.log("Buy lot: ", sender, newPrice);
     }

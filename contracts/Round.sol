@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity  ^0.7.0 || ^0.8.0;
 
 import "./interfaces/IGroup.sol";
 import "./interfaces/IExchangeTest.sol";
@@ -171,7 +171,7 @@ contract Round {
     ) external enoughRes(proofRes){
         ILot lot = ILot(lotAddr);
         lot.Cancel(proofRes.addr, proofEP.prevPrice, proofEP);
-        console.log("Lot is canceled");
+        console.log("Cancel lot: ", proofRes.addr);
     }
 
     function SendCanceled(
@@ -185,7 +185,6 @@ contract Round {
         lot.EndCancel(_timeFirst, _timeSecond, _value, _sender);
         uint count = exc.EthToTokenVirtual(_value);
         lot.SetReceiveTokens(count);
-        console.log("Canceled send");
     }
 
     function ReceiveCanceled(

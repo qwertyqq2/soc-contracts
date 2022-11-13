@@ -1,6 +1,4 @@
 const { expect } = require("chai");
-const { utils } = require("ethers");
-const web3 = require('web3');
 const deposit = BigInt("10000")
 
 
@@ -14,10 +12,15 @@ beforeEach(async function () {
     const plib = await proofLib.deploy();
     await plib.deployed();
 
+    const prizeLib = await ethers.getContractFactory("Prize");
+    const prizelib = await prizeLib.deploy();
+    await prizelib.deployed();
+
     Group = await ethers.getContractFactory("Group", {
         libraries: {
             Math: mlib.address,
             Proof: plib.address,
+            Prize: prizelib.address,
         },
     });
 
@@ -71,7 +74,7 @@ describe.only("Snapshot players", async () => {
 
     })
 
-    it("Sending", async () => {
+    it.only("send successfully", async () => {
         const mathLib = await ethers.getContractFactory("Math");
         const mlib = await mathLib.deploy();
         await mlib.deployed();
@@ -88,56 +91,90 @@ describe.only("Snapshot players", async () => {
             addresses.push(accounts[i].address)
         }
 
-        async function GetProofPlayer(N) {
+        async function GetProofPlayer(CurrentNumber) {
             let H1 = await group.GetInitSnapRound()
-            for (let i = 0; i < N; i++) {
+            for (let i = 0; i < CurrentNumber; i++) {
                 snap = await mlib.GetSnap(addresses[i], balances[i])
                 H1 = await mlib.xor(H1, snap)
             }
-            let H2 = await mlib.GetSnap(accounts[N + 1].address, deposit)
-            for (let i = N + 2; i < accounts.length; i++) {
-                snap = await mlib.GetSnap(accounts[i].address, deposit)
+            let H2 = await mlib.GetSnap(accounts[CurrentNumber + 1].address, balances[CurrentNumber + 1])
+            for (let i = CurrentNumber + 2; i < accounts.length; i++) {
+                snap = await mlib.GetSnap(accounts[i].address, balances[i])
                 H2 = await mlib.xor(H2, snap)
             }
             return [H1, H2]
         }
 
 
-        const N = 10;
-        [H1, H2] = await GetProofPlayer(N)
+        async function IterLot(creatorNumber, ownerNumber, timeF, timeS, value, initPrice) {
+            let H1, H2;
+            [H1, H2] = await GetProofPlayer(creatorNumber);
+            await group.connect(accounts[creatorNumber]).CreateLot(timeF, timeS,
+                initPrice, value, H1, H2, balances[creatorNumber]);
+
+            let snapshot = await mlib.GetNewBuySnapshot(accounts[creatorNumber].address, initPrice, 0);
+
+            let prevSnapshot = 0;
+            let curowner = accounts[creatorNumber].address;
+            let curprice = initPrice;
+
+            for (let i = 1; i <= ownerNumber; i++) {
+                [H1, H2] = await GetProofPlayer(i);
+                await group.connect(accounts[i]).BuyLot(initPrice + i, H1, H2, balances[i],
+                    curowner, curprice, prevSnapshot);
+                prevSnapshot = snapshot;
+                curowner = accounts[i].address;
+                curprice = initPrice + i;
+                snapshot = mlib.GetNewBuySnapshot(accounts[i].address, initPrice + i, snapshot);
+            }
+
+            await group.connect(accounts[0]).SendLot(timeF, timeS, value);
+
+            [H1, H2] = await GetProofPlayer(ownerNumber);
 
 
-        //lot//`
-        const timeF = 123123123
-        const timeS = 1231231231212
-        const price = 100
-        const value = 10
+            const receiveTx = await group.connect(accounts[0]).ReceiveLot(timeF, timeS, value,
+                curowner, curprice, H1, H2, balances[ownerNumber], prevSnapshot);
 
-        await group.connect(accounts[N]).CreateLot(timeF, timeS, price, value, H1, H2, balances[N]);
-        let snapshot = await mlib.GetNewBuySnapshot(accounts[N].address, price, 0);
-        [H1, H2] = await GetProofPlayer(N);
-        let prevSnapshot = 0
-        let prevOwner = accounts[N].address
-        let prevPrice = price
-        let L;
-        const last = 10
-        for (let i = 1; i <= last; i++) {
-            [H1, H2] = await GetProofPlayer(i)
-            await group.connect(accounts[i]).BuyLot(price + i, H1, H2, balances[i],
-                prevOwner, prevPrice, prevSnapshot)
-            prevSnapshot = snapshot
-            prevOwner = accounts[i].address
-            prevPrice = price + i
-            snapshot = mlib.GetNewBuySnapshot(accounts[i].address, price + i, snapshot)
+            const result = await receiveTx.wait();
+
+            const newBalance = BigInt(Number(result.events[0].args._newBalance));
+            balances[ownerNumber] = newBalance;
         }
 
-        await group.connect(accounts[0]).SendLot(timeF, timeS, value);
+        let timeF = Date.now() + 120;
+        let timeS = timeF + 100;
+        let value = 65;
+        let initPrice = 100;
 
-        [H1, H2] = await GetProofPlayer(last);
+
+        let creatorNumber = 10;
+        let ownerNumber = 8;
 
 
-        await group.connect(accounts[0]).ReceiveLot(timeF, timeS, value,
-            accounts[last].address, price + last, H1, H2, balances[last], prevSnapshot);
+        await IterLot(creatorNumber, ownerNumber, timeF, timeS, value, initPrice)
+
+        timeF = Date.now() + 120;
+        timeS = timeF + 100;
+        value = 65;
+        initPrice = 100;
+
+        creatorNumber = 8;
+        ownerNumber = 10;
+
+
+        await IterLot(creatorNumber, ownerNumber, timeF, timeS, value, initPrice)
+
+        timeF = Date.now() + 120;
+        timeS = timeF + 100;
+        value = 65;
+        initPrice = 100;
+
+        creatorNumber = 10;
+        ownerNumber = 8;
+
+
+        await IterLot(creatorNumber, ownerNumber, timeF, timeS, value, initPrice)
 
     })
 

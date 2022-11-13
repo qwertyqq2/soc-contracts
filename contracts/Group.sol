@@ -5,11 +5,17 @@ import "./Round.sol";
 import "./interfaces/IRound.sol";
 
 import "./libraries/Proof.sol";
-import "./libraries/Player.sol";
+import "./libraries/Prize.sol";
 
 import "hardhat/console.sol";
 
 contract Group {
+
+    event NewBalance(
+        address _owner,
+        uint _newBalance
+    );
+
     address owner;
     address roundAddr;
     address exchangeAddress;
@@ -48,8 +54,6 @@ contract Group {
         require(round.GetPlayer(msg.sender) > 0, "You're not a player");
         _;
     }
-
-
 
     function CreateLot(
         uint256 _timeFirst,
@@ -109,9 +113,9 @@ contract Group {
             _balance
         );
         proof.prevSnap = _prevSnap;
-
         IRound round = IRound(roundAddr);
-        round.ReceiveLot(_timeFirst, _timeSecond, _value, proof);
+        uint newBalance = round.ReceiveLot(_timeFirst, _timeSecond, _value, proof);
+        emit NewBalance(_addr, newBalance);
     }
 
     function CancelLot(
@@ -135,7 +139,7 @@ contract Group {
         uint256 _timeSecond,
         uint256 _value,
         address _sender
-    )external{
+    ) external {
         IRound round = IRound(roundAddr);
         round.SendCanceled(_timeFirst, _timeSecond, _value, _sender);
     }
@@ -171,5 +175,16 @@ contract Group {
 
     function GetBalance() public view returns(uint256){
         return address(this).balance;
+    }
+
+    function VerifyProofRes(
+        address _addr,
+        uint _H1,
+        uint _H2,
+        uint _balance
+    ) public view returns(bool){
+        Proof.ProofRes memory proofRes = Proof.NewProof(_addr, 0, _H1, _H2, _balance);
+        IRound round = IRound(roundAddr);
+        return round.VerifyProofRes(proofRes);
     }
 }

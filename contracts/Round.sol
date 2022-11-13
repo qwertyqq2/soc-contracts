@@ -9,7 +9,7 @@ import "./interfaces/IRound.sol";
 
 import "./libraries/Proof.sol";
 import "./libraries/Math.sol";
-import "./libraries/Player.sol";
+import "./libraries/Prize.sol";
 
 
 import "./ExchangeTest.sol";
@@ -59,6 +59,8 @@ contract Round {
         uint256 delta
     );
 
+
+    
     fallback() external payable {}
 
     receive() external payable {}
@@ -152,16 +154,29 @@ contract Round {
         uint256 _timeSecond,
         uint256 _value,
         Proof.ProofRes calldata proof
-    )  public onlyGroup{
+    )  public onlyGroup returns(uint newBalance){
         IExchangeTest exc = IExchangeTest(exchangeAddress);
         ILot lot = ILot(lotAddr);
         lot.Close(_timeFirst, _timeSecond, _value, proof);
         uint initBal = address(this).balance;
         uint val = exc.GetTokenBalance();
         exc.TokenToEth(val);
-        uint res = address(this).balance - initBal;
+        int res = int(address(this).balance) - int(initBal) - int(_value);
+        if(res>=0) (balancesSnap, newBalance)  = Prize.Update(
+                                                    proof.addr,
+                                                    proof.balance, 
+                                                    proof.H1, 
+                                                    proof.H2, 
+                                                    int(proof.price)
+                                                    );
+        else (balancesSnap, newBalance) = Prize.Update(
+                                                    proof.addr, 
+                                                    proof.balance,
+                                                    proof.H1, 
+                                                    proof.H2,
+                                                    -int(proof.price)
+                                                    );
         console.log("Lot received");
-
     }
 
 
@@ -206,10 +221,6 @@ contract Round {
         }
     }
 
-    function setBalance(Proof.ProofRes calldata proof, uint _value) internal {
-        balancesSnap = Proof.NewBalanceSnap(proof, _value);
-    }
-
     function GetSnap() public view returns (uint256) {
         ILot lot = ILot(lotAddr);
         return lot.GetSnap();
@@ -231,7 +242,12 @@ contract Round {
         return exchangeAddress;
     }
 
-
+    function VerifyProofRes(
+        Proof.ProofRes calldata proof
+    ) external view returns(bool){
+        uint snap = Proof.GetProofBalance(proof);
+        return snap==balancesSnap;
+    }
 
     
 }

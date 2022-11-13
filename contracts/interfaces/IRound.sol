@@ -38,7 +38,7 @@ interface IRound {
         uint256 _timeSecond,
         uint256 _value,
         Proof.ProofRes memory proof
-    ) external;
+    ) external returns(uint);
 
    
     function CancelLot(
@@ -71,4 +71,8 @@ interface IRound {
     function GetInitSnap() external view returns(uint256);
 
     function GetExchange() external view returns(address);
+
+    function VerifyProofRes(
+        Proof.ProofRes calldata proof
+    ) external view returns(bool);
 }

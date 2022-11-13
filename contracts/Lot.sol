@@ -79,7 +79,7 @@ contract Lot {
         state = uint256(keccak256(abi.encode("empty")));
         
         emit NewLot(timeFirst, timeSecond, owner, price, value, snapshot);
-        //console.log("New lot: ", owner, price);
+        console.log("New lot: ", owner, price);
     }
 
 
@@ -192,7 +192,7 @@ contract Lot {
         uint256 timeFirst,
         uint256 timeSecond,
         uint256 value
-    ) public pure returns(uint256){
+    ) private pure returns(uint256){
         return uint256(
                 keccak256(
                     abi.encodePacked(
@@ -205,16 +205,16 @@ contract Lot {
     }
 
 
-    function SetReceiveTokens(uint _receiveTokens) public onlyRound{
+    function SetReceiveTokens(uint _receiveTokens) external onlyRound{
         require(_receiveTokens>0, "uncorrect value");
         receiveToken = _receiveTokens;
     }
 
-    function GetReceiveTokens() public view returns(uint){
+    function GetReceiveTokens() external view returns(uint){
         return receiveToken;
     }
 
-     function GetSnap() public view returns (uint256) {
+     function GetSnap() external view returns (uint256) {
         return snapshot;
     }
 

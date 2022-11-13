@@ -142,39 +142,23 @@ describe.only("Snapshot players", async () => {
             balances[ownerNumber] = newBalance;
         }
 
-        let timeF = Date.now() + 120;
-        let timeS = timeF + 100;
-        let value = 65;
-        let initPrice = 100;
+        async function Iter(CountIter) {
+            for (let i = 0; i < CountIter; i++) {
+                let timeF = Date.now() + 120;
+                let timeS = timeF + 100;
+                let value = 65;
+                let initPrice = 100;
 
 
-        let creatorNumber = 10;
-        let ownerNumber = 8;
+                let creatorNumber = i % 15 + 2;
+                let ownerNumber = i % 15 + 3;
+                await IterLot(creatorNumber, ownerNumber, timeF, timeS, value, initPrice)
+            }
+        }
 
+        await Iter(20);
 
-        await IterLot(creatorNumber, ownerNumber, timeF, timeS, value, initPrice)
-
-        timeF = Date.now() + 120;
-        timeS = timeF + 100;
-        value = 65;
-        initPrice = 100;
-
-        creatorNumber = 8;
-        ownerNumber = 10;
-
-
-        await IterLot(creatorNumber, ownerNumber, timeF, timeS, value, initPrice)
-
-        timeF = Date.now() + 120;
-        timeS = timeF + 100;
-        value = 65;
-        initPrice = 100;
-
-        creatorNumber = 10;
-        ownerNumber = 8;
-
-
-        await IterLot(creatorNumber, ownerNumber, timeF, timeS, value, initPrice)
+        console.log(balances)
 
     })
 

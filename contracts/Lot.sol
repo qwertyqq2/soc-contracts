@@ -11,7 +11,6 @@ import "hardhat/console.sol";
 
 contract Lot {
     address roundAddr;
-    uint256 numberLot;
 
     uint256 snapshot;
     uint256 snapshot1;
@@ -37,8 +36,7 @@ contract Lot {
     event FinalLot(address owner, uint256 value);
 
 
-    constructor(uint256 num ) {
-        numberLot = num;
+    constructor(){
         roundAddr = msg.sender;
         state = uint256(keccak256(abi.encode("closed")));
     }
@@ -65,7 +63,6 @@ contract Lot {
                 )
             )
         );
-
         snapshot1 = uint256(
             keccak256(
                 abi.encodePacked(
@@ -75,9 +72,7 @@ contract Lot {
                 )
             )
         );
-
         state = uint256(keccak256(abi.encode("empty")));
-        
         emit NewLot(timeFirst, timeSecond, owner, price, value, snapshot);
         console.log("New lot: ", owner, price);
     }

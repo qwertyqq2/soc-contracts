@@ -11,6 +11,10 @@ import "hardhat/console.sol";
 
 contract Group {
 
+    event LotCreated(
+        address _lotAddr
+    );
+
     event NewBalance(
         address _owner,
         uint _newBalance
@@ -49,109 +53,123 @@ contract Group {
         round.StartRound();
     }
 
+    function CreateLot() external{
+        IRound round = IRound(roundAddr);
+        address lotAddr = round.CreateLot();
+        emit LotCreated(lotAddr);
+        console.log("Create Lot: ", lotAddr);
+    }
+
     modifier onlyPlayer() {
         IRound round = IRound(roundAddr);
         require(round.GetPlayer(msg.sender) > 0, "You're not a player");
         _;
     }
 
-    function CreateLot(
+    function NewLot(
+        address _lotAddr,
         uint256 _timeFirst,
         uint256 _timeSecond,
         uint256 _price,
         uint256 _val,
-        uint256 _H1, 
-        uint256 _H2, 
+        uint _Hres,
         uint _balance
-    ) public {
-        Proof.ProofRes memory proof = Proof.NewProof(msg.sender, _price, _H1, _H2, _balance);
+    ) external {
+        Proof.ProofRes memory proof = Proof.NewProof(msg.sender, _price, _Hres, _balance);
         IRound round = IRound(roundAddr);
-        round.NewLot(_timeFirst, _timeSecond, _val, proof);
+        round.NewLot(_lotAddr, _timeFirst, _timeSecond, _val, proof);
     }
 
     function BuyLot(
+        address _lotAddr,
         uint256 _price,
-        uint _H1,
-        uint _H2,
+        uint _Hres,
+        uint _Hd,
         uint256 _balance,
+        uint256 _prevBalance,
         address _prevOwner,
         uint256 _prevPrice,
         uint256 _prevSnap
-        ) public {
-        Proof.ProofRes memory proofRes = Proof.NewProof(msg.sender, _price, _H1, _H2, _balance);
+        ) external {
+        Proof.ProofRes memory proofRes = Proof.NewProof(msg.sender, _price, _Hres, _balance);
+        proofRes.prevOwner = _prevOwner;
+        proofRes.prevBalance = _prevBalance;
+        proofRes.Hd = _Hd;
         Proof.ProofEnoungPrice memory proofEP = Proof.NewProofEnoughPrice(_prevOwner, _prevPrice, _prevSnap);
         IRound round = IRound(roundAddr);
-        round.BuyLot(proofRes, proofEP);
+        round.BuyLot(_lotAddr, proofRes, proofEP);
     }
 
 
     function SendLot(
+        address _lotAddr,
         uint256 _timeFirst,
         uint256 _timeSecond,
         uint256 _value
-    ) public{
+    ) external{
         IRound round = IRound(roundAddr);
-        round.SendLot(_timeFirst, _timeSecond, _value);
+        round.SendLot(_lotAddr, _timeFirst, _timeSecond, _value);
     }
 
     function ReceiveLot(
+        address _lotAddr,
         uint256 _timeFirst,
         uint256 _timeSecond,
         uint256 _value,
         address _addr,
         uint256 _price,
-        uint _H1,
-        uint _H2,
+        uint _H,
         uint _balance,
         uint _prevSnap
-    ) public {
+    ) external {
         Proof.ProofRes memory proof = Proof.NewProof(
             _addr,
             _price,
-            _H1,
-            _H2,
+            _H,
             _balance
         );
         proof.prevSnap = _prevSnap;
         IRound round = IRound(roundAddr);
-        uint newBalance = round.ReceiveLot(_timeFirst, _timeSecond, _value, proof);
+        uint newBalance = round.ReceiveLot(_lotAddr, _timeFirst, _timeSecond, _value, proof);
         emit NewBalance(_addr, newBalance);
     }
 
     function CancelLot(
+        address _lotAddr,
         uint256 _currentPrice,
-        uint _H1,
-        uint _H2,
+        uint _H,
         uint256 _balance,
         address _prevOwner,
         uint256 _prevPrice,
         uint256 _prevSnap
         ) public {
-        Proof.ProofRes memory proofRes = Proof.NewProof(msg.sender, _currentPrice, _H1, _H2, _balance);
+        Proof.ProofRes memory proofRes = Proof.NewProof(msg.sender, _currentPrice, _H, _balance);
         Proof.ProofEnoungPrice memory proofEP = Proof.NewProofEnoughPrice(_prevOwner, _prevPrice, _prevSnap);
         IRound round = IRound(roundAddr);
-        round.CancelLot(proofRes, proofEP);
+        round.CancelLot(_lotAddr, proofRes, proofEP);
 
     }
 
     function SendCancelLot(
+        address _lotAddr,
         uint256 _timeFirst,
         uint256 _timeSecond,
         uint256 _value,
         address _sender
     ) external {
         IRound round = IRound(roundAddr);
-        round.SendCanceled(_timeFirst, _timeSecond, _value, _sender);
+        round.SendCanceled(_lotAddr, _timeFirst, _timeSecond, _value, _sender);
     }
 
     function ReceiveCancelLot(
+        address _lotAddr,
         uint256 _timeFirst,
         uint256 _timeSecond,
         uint256 _value,
         address _sender
     ) external{
         IRound round = IRound(roundAddr);
-        round.ReceiveCanceled(_timeFirst, _timeSecond, _value, _sender);
+        round.ReceiveCanceled(_lotAddr, _timeFirst, _timeSecond, _value, _sender);
     }
 
     function GetSnap() public view returns (uint256) {
@@ -173,17 +191,12 @@ contract Group {
         return round.GetInitSnap();
     }
 
-    function GetBalance() public view returns(uint256){
-        return address(this).balance;
-    }
-
     function VerifyProofRes(
         address _addr,
-        uint _H1,
-        uint _H2,
+        uint _H,
         uint _balance
     ) public view returns(bool){
-        Proof.ProofRes memory proofRes = Proof.NewProof(_addr, 0, _H1, _H2, _balance);
+        Proof.ProofRes memory proofRes = Proof.NewProof(_addr, 0, _H, _balance);
         IRound round = IRound(roundAddr);
         return round.VerifyProofRes(proofRes);
     }

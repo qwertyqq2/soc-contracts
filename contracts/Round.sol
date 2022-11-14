@@ -95,16 +95,16 @@ contract Round {
                                                         )))
                                         );
         }
-
         balancesSnap = uint256(keccak256(abi.encode(balancesSnap)));
         timeCreation = block.timestamp;
-
-   
-        Lot lot = new Lot(1);
-        lotAddr = address(lot);
-
     }
 
+    function CreateLot() external onlyGroup returns(address){
+        require(timeCreation!=0);
+        Lot lot  = new Lot();
+        lotAddr = address(lot);
+        return lotAddr;
+    }
 
     
     modifier enoughRes(Proof.ProofRes calldata proof){
@@ -115,32 +115,44 @@ contract Round {
     }
 
     function NewLot(
+        address _lotAddr,
         uint256 _timeFirst,
         uint256 _timeSecond,
         uint256 _val,
         Proof.ProofRes calldata proof
     ) public onlyGroup enoughRes(proof) {
-        ILot lot = ILot(lotAddr);
-        lot.New(_timeFirst, _timeSecond, proof.addr, proof.price, _val);
+        balancesSnap = Prize.SnapNew(proof.owner, proof.balance, proof.price, proof.Hres);
+        ILot lot = ILot(_lotAddr);
+        lot.New(_timeFirst, _timeSecond, proof.owner, proof.price, _val);
     }
 
     function BuyLot(
+        address _lotAddr,
         Proof.ProofRes calldata proofRes, 
         Proof.ProofEnoungPrice calldata proofEP 
      ) public onlyGroup enoughRes(proofRes) {
-        ILot lot = ILot(lotAddr);
-        lot.Buy(proofRes.addr, proofRes.price, proofEP);
+        balancesSnap = Prize.SnapBuy(
+            proofRes.owner,
+            proofRes.prevOwner,
+            proofRes.balance,
+            proofRes.prevBalance,
+            proofRes.price,
+            proofRes.Hd
+        );
+        ILot lot = ILot(_lotAddr);
+        lot.Buy(proofRes.owner, proofRes.price, proofEP);
     }
 
     
 
     function SendLot(
+        address _lotAddr,
         uint256 _timeFirst,
         uint256 _timeSecond,
         uint256 _value
     ) public onlyGroup{
         IExchangeTest exc = IExchangeTest(exchangeAddress);
-        ILot lot = ILot(lotAddr);
+        ILot lot = ILot(_lotAddr);
         lot.End(_timeFirst, _timeSecond, _value);
         uint initBal = exc.GetTokenBalance();
         exc.EthToToken{value: _value}();
@@ -150,30 +162,29 @@ contract Round {
 
 
     function ReceiveLot(
+        address _lotAddr,
         uint256 _timeFirst,
         uint256 _timeSecond,
         uint256 _value,
         Proof.ProofRes calldata proof
     )  public onlyGroup returns(uint newBalance){
         IExchangeTest exc = IExchangeTest(exchangeAddress);
-        ILot lot = ILot(lotAddr);
+        ILot lot = ILot(_lotAddr);
         lot.Close(_timeFirst, _timeSecond, _value, proof);
         uint initBal = address(this).balance;
         uint val = exc.GetTokenBalance();
         exc.TokenToEth(val);
         int res = int(address(this).balance) - int(initBal) - int(_value);
         if(res>=0) (balancesSnap, newBalance)  = Prize.Update(
-                                                    proof.addr,
+                                                    proof.owner,
                                                     proof.balance, 
-                                                    proof.H1, 
-                                                    proof.H2, 
+                                                    proof.Hres,
                                                     int(proof.price)
                                                     );
         else (balancesSnap, newBalance) = Prize.Update(
-                                                    proof.addr, 
+                                                    proof.owner, 
                                                     proof.balance,
-                                                    proof.H1, 
-                                                    proof.H2,
+                                                    proof.Hres,
                                                     -int(proof.price)
                                                     );
         console.log("Lot received");
@@ -181,35 +192,38 @@ contract Round {
 
 
     function CancelLot(
+        address _lotAddr,
         Proof.ProofRes calldata proofRes, 
         Proof.ProofEnoungPrice calldata proofEP
     ) external enoughRes(proofRes){
-        ILot lot = ILot(lotAddr);
-        lot.Cancel(proofRes.addr, proofEP.prevPrice, proofEP);
-        console.log("Cancel lot: ", proofRes.addr);
+        ILot lot = ILot(_lotAddr);
+        lot.Cancel(proofRes.owner, proofEP.prevPrice, proofEP);
+        console.log("Cancel lot: ", proofRes.owner);
     }
 
     function SendCanceled(
+        address _lotAddr,
         uint256 _timeFirst,
         uint256 _timeSecond,
         uint256 _value,
         address _sender
     ) external onlyGroup{
         IExchangeTest exc = IExchangeTest(exchangeAddress);
-        ILot lot = ILot(lotAddr);
+        ILot lot = ILot(_lotAddr);
         lot.EndCancel(_timeFirst, _timeSecond, _value, _sender);
         uint count = exc.EthToTokenVirtual(_value);
         lot.SetReceiveTokens(count);
     }
 
     function ReceiveCanceled(
+        address _lotAddr,
         uint256 _timeFirst,
         uint256 _timeSecond,
         uint256 _value,
         address _sender
     ) external onlyGroup{
         IExchangeTest exc = IExchangeTest(exchangeAddress);
-        ILot lot = ILot(lotAddr);
+        ILot lot = ILot(_lotAddr);
         lot.CloseCancel(_timeFirst, _timeSecond, _value, _sender);
         uint count = lot.GetReceiveTokens();
         uint res = exc.TokenToEthVirtual(count);

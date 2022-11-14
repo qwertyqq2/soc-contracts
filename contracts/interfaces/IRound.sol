@@ -8,7 +8,10 @@ interface IRound {
 
     function StartRound() external;
 
+    function CreateLot() external returns(address);
+
     function NewLot(
+        address _lotAddr,
         uint256 _timeFirst,
         uint256 _timeSecond,
         uint256 _val,
@@ -16,24 +19,24 @@ interface IRound {
     ) external;
 
     function BuyLot(
+        address _lotAddr,
         Proof.ProofRes memory proof,
         Proof.ProofEnoungPrice memory proofEP 
     ) external;
 
-    function JoinLot(
-        Proof.ProofRes memory proof
-    ) external;
 
     function GetPlayer(address player) external view returns (uint256);
 
 
     function SendLot(
+        address _lotAddr,
         uint256 _timeFirst,
         uint256 _timeSecond,
         uint256 _value
     ) external;
 
     function ReceiveLot(
+        address _lotAddr,
         uint256 _timeFirst,
         uint256 _timeSecond,
         uint256 _value,
@@ -42,12 +45,14 @@ interface IRound {
 
    
     function CancelLot(
+        address _lotAddr,
         Proof.ProofRes calldata proofRes, 
         Proof.ProofEnoungPrice calldata proofEP
     ) external;
 
 
     function SendCanceled(
+        address _lotAddr,
         uint256 _timeFirst,
         uint256 _timeSecond,
         uint256 _value,
@@ -56,6 +61,7 @@ interface IRound {
 
 
     function ReceiveCanceled(
+        address _lotAddr,
         uint256 _timeFirst,
         uint256 _timeSecond,
         uint256 _value,

@@ -5,26 +5,26 @@ import "hardhat/console.sol";
 
 library Proof {
     struct ProofRes{
-                address addr;
+                address owner;
                 uint256 price;
-                uint H1;
-                uint H2;
+                uint Hres;
+                uint Hd;
                 uint balance;
                 uint prevSnap;
+                address prevOwner;
+                uint prevBalance;
         }
 
     function NewProof(
-        address _addr,
+        address _owner,
         uint256 _price,
-        uint _H1,
-        uint _H2,
-        uint _balance
+        uint256 _Hres,
+        uint256 _balance
     ) external pure returns(ProofRes memory){
         ProofRes memory proof;
-        proof.addr = _addr;
+        proof.owner = _owner;
         proof.price = _price;
-        proof.H1 = _H1;
-        proof.H2 = _H2;
+        proof.Hres = _Hres;
         proof.balance = _balance;
         return proof;
     }
@@ -33,14 +33,15 @@ library Proof {
     function snap(ProofRes calldata proof) internal pure returns(uint256) {
         return uint256(
                 keccak256(
-                    abi.encodePacked(uint256(uint160(proof.addr)), proof.balance)
+                    abi.encodePacked(uint256(uint160(proof.owner)), proof.balance)
                     )
                 );
     }
 
     function GetProofBalance(ProofRes calldata proof) external pure returns(uint256){
         uint s = snap(proof);
-        return uint256(keccak256(abi.encode(xor(xor(proof.H1, s), proof.H2))));
+        uint val = xor(proof.Hres, s);
+        return uint256(keccak256(abi.encode(val)));
     } 
 
 
@@ -48,7 +49,7 @@ library Proof {
         return uint256(
             keccak256(
                 abi.encodePacked(
-                    proof.addr, 
+                    proof.owner, 
                     proof.price, 
                     proof.prevSnap
                     )
@@ -83,17 +84,15 @@ library Proof {
     }
 
     function NewBalanceSnap(ProofRes calldata proof, uint _value) external pure returns(uint256){
-
         uint snapOwner = uint256(
                 keccak256(
-                    abi.encodePacked(uint256(uint160(proof.addr)), _value)
+                    abi.encodePacked(uint256(uint160(proof.owner)), _value)
                     )
                 );
-
         return uint256(
             keccak256(
                 abi.encode(
-                    xor(xor(proof.H1, snapOwner), proof.H2)
+                    xor(proof.Hres, snapOwner)
                 )
             )
         );

@@ -7,7 +7,6 @@ import "hardhat/console.sol";
 library Params {
     struct PlayerParams{
         address owner; 
-        uint balance;
         uint nwin;
         uint n;
         uint spos;
@@ -15,13 +14,10 @@ library Params {
         uint Hp;
     }
 
-    function NewPlayerParams(
-        address _owner, 
-        uint _balance
-    ) external pure returns(PlayerParams memory){
+    function NewPlayerParams(address _owner) 
+        external pure returns(PlayerParams memory){
         PlayerParams memory params;
         params.owner = _owner;
-        params.balance = _balance;
         params.nwin = 0;
         params.n = 0;
         params.spos = 0;
@@ -31,7 +27,6 @@ library Params {
 
     function GetPlayerParams(
         address _owner,
-        uint _balance,
         uint _nwin,
         uint _n,
         uint _spos,
@@ -39,7 +34,6 @@ library Params {
     ) external pure returns(PlayerParams memory){
         PlayerParams memory params;
         params.owner = _owner;
-        params.balance = _balance;
         params.nwin = _nwin;
         params.n = _n;
         params.spos = _spos;
@@ -49,26 +43,34 @@ library Params {
 
     function EncodePlayerParams(
         address _owner,
-        uint _balance,
         uint _nwin,
         uint _n,
         uint _spos,
         uint _sneg,
         uint _Hp
     ) external pure returns(bytes memory data){
-        data = abi.encode( _owner, _balance, _nwin, _n, _spos, _sneg, _Hp);
+        data = abi.encode( _owner, _nwin, _n, _spos, _sneg, _Hp);
     }
 
 
     function DecodePlayerParams(bytes memory data) 
         external pure returns(PlayerParams memory){
             PlayerParams memory params;
-            (params.owner, params.balance, params.nwin, params.n, params.spos, params.sneg, params.Hp) 
+            (params.owner, params.nwin, params.n, params.spos, params.sneg, params.Hp) 
                 = abi.decode(data,
-                ( address, uint, uint, uint, uint, uint, uint));
+                ( address, uint, uint, uint, uint, uint));
             return params;
         }
 
+
+    function DecodePlayerParamsInTuple(bytes memory data) 
+        external pure returns(PlayerParams memory){
+            PlayerParams memory params;
+            (params.owner, params.nwin, params.n, params.spos, params.sneg) 
+                = abi.decode(data,
+                ( address, uint, uint, uint, uint));
+            return params;
+        }
 
     function GetSnapParamPlayer(PlayerParams calldata params) 
         public pure returns(uint){
@@ -76,7 +78,6 @@ library Params {
                 keccak256(
                     abi.encodePacked(
                         params.owner, 
-                        params.balance, 
                         params.nwin,
                         params.n, 
                         params.spos, 
@@ -87,7 +88,6 @@ library Params {
 
     function GetSnapParamPlayerOut(
         address _owner, 
-        uint _balance,
         uint _nwin,
         uint _n,
         uint _spos,
@@ -97,7 +97,6 @@ library Params {
                 keccak256(
                     abi.encodePacked(
                         _owner, 
-                        _balance, 
                         _nwin,
                         _n, 
                         _spos, 

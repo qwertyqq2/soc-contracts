@@ -110,7 +110,6 @@ describe.only("Snapshot players", async () => {
             params.push(
                 {
                     owner: accounts[i].address,
-                    balance: deposit,
                     nwin: 0,
                     n: 0,
                     spos: 0,
@@ -124,7 +123,6 @@ describe.only("Snapshot players", async () => {
             for (let i = 0; i < CurrentNumber; i++) {
                 snap = await paramslib.GetSnapParamPlayerOut(
                     params[i].owner,
-                    params[i].balance,
                     params[i].nwin,
                     params[i].n,
                     params[i].spos,
@@ -134,7 +132,6 @@ describe.only("Snapshot players", async () => {
             }
             let H2 = await paramslib.GetSnapParamPlayerOut(
                 params[CurrentNumber + 1].owner,
-                params[CurrentNumber + 1].balance,
                 params[CurrentNumber + 1].nwin,
                 params[CurrentNumber + 1].n,
                 params[CurrentNumber + 1].spos,
@@ -143,7 +140,6 @@ describe.only("Snapshot players", async () => {
             for (let i = CurrentNumber + 2; i < accounts.length; i++) {
                 snap = await paramslib.GetSnapParamPlayerOut(
                     params[i].owner,
-                    params[i].balance,
                     params[i].nwin,
                     params[i].n,
                     params[i].spos,
@@ -204,7 +200,6 @@ describe.only("Snapshot players", async () => {
 
             let dataParams = await paramslib.EncodePlayerParams(
                 params[ownerNumber].owner,
-                params[ownerNumber].balance,
                 params[ownerNumber].nwin,
                 params[ownerNumber].n,
                 params[ownerNumber].spos,
@@ -249,14 +244,13 @@ describe.only("Snapshot players", async () => {
             Hp = await GetProofParams(ownerNumber);
 
 
-            const dataProof = await plib.EncodeProofRes(price, Hres, prevSnapshot);
+            const dataProof = await plib.EncodeProofRes(balances[ownerNumber], price, Hres, prevSnapshot);
 
 
             Hp = await GetProofParams(ownerNumber);
 
             dataParams = await paramslib.EncodePlayerParams(
                 params[ownerNumber].owner,
-                params[ownerNumber].balance,
                 params[ownerNumber].nwin,
                 params[ownerNumber].n,
                 params[ownerNumber].spos,
@@ -271,7 +265,6 @@ describe.only("Snapshot players", async () => {
             const receiveTx = await group.connect(accounts[0]).ReceiveLot(
                 lotAddr,
                 addresses[ownerNumber],
-                balances[ownerNumber],
                 dataInit,
                 dataProof,
                 dataParams
@@ -279,8 +272,13 @@ describe.only("Snapshot players", async () => {
 
             const result = await receiveTx.wait();
 
-            const newBalance = BigInt(Number(result.events[0].args._newBalance));
+            const newBalance = BigInt(Number(result.events[1].args._newBalance));
+            const newParam = result.events[0].args;
             balances[ownerNumber] = newBalance;
+            params[ownerNumber].nwin = newParam._nwin;
+            params[ownerNumber].n = newParam._n;
+            params[ownerNumber].spos = newParam._spos;
+            params[ownerNumber].sneg = newParam._sneg;
         }
 
         let CreateLotTx = await group.CreateLot();
@@ -294,9 +292,44 @@ describe.only("Snapshot players", async () => {
         let initPrice = 100;
 
 
-        let creatorNumber = 17;
+        let creatorNumber = 14;
         let ownerNumber = 12;
 
         await IterLot(lotAddr1, creatorNumber, ownerNumber, timeF, timeS, value, initPrice);
+
+        timeF = Date.now() + 120;
+        timeS = timeF + 100;
+        value = 200;
+        initPrice = 300;
+
+
+        creatorNumber = 9;
+        ownerNumber = 7;
+
+        await IterLot(lotAddr1, creatorNumber, ownerNumber, timeF, timeS, value, initPrice);
+
+        timeF = Date.now() + 120;
+        timeS = timeF + 100;
+        value = 200;
+        initPrice = 300;
+
+
+        creatorNumber = 15;
+        ownerNumber = 10;
+
+        await IterLot(lotAddr1, creatorNumber, ownerNumber, timeF, timeS, value, initPrice); timeF = Date.now() + 120;
+
+        timeS = timeF + 100;
+        value = 200;
+        initPrice = 300;
+
+
+        creatorNumber = 13;
+        ownerNumber = 14;
+
+        await IterLot(lotAddr1, creatorNumber, ownerNumber, timeF, timeS, value, initPrice);
+
+
+        console.log(balances);
     })
 })

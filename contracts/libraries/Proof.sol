@@ -31,17 +31,18 @@ library Proof {
 
 
     function EncodeProofRes(
+        uint _balance,
         uint256 _price,
         uint256 _Hres,
         uint256 _prevSnap
     ) external pure returns(bytes memory data){
-        data = abi.encode( _price, _Hres, _prevSnap);
+        data = abi.encode(_balance ,_price, _Hres, _prevSnap);
     }
 
     function DecodeProofRes(bytes memory data)
         external pure returns(ProofRes memory proof){
-            ( proof.price, proof.Hres,  proof.prevSnap) = 
-                abi.decode(data, (uint, uint, uint));
+            ( proof.balance, proof.price, proof.Hres,  proof.prevSnap) = 
+                abi.decode(data, (uint, uint, uint, uint));
         }
 
     function snap(ProofRes calldata proof) internal pure returns(uint256) {

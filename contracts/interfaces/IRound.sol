@@ -40,7 +40,7 @@ interface IRound {
         Params.InitParams calldata _init,
         Proof.ProofRes calldata _proof,
         Params.PlayerParams calldata _params
-    ) external returns(uint);
+    ) external returns(uint, bytes memory);
 
 
 

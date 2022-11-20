@@ -20,6 +20,14 @@ contract Group {
         uint _newBalance
     );
 
+    event UpdatePlayerParams(
+        address _owner,
+        uint _nwin, 
+        uint _n,
+        uint _spos, 
+        uint _sneg
+    );
+
     address owner;
     address roundAddr;
     address exchangeAddress;
@@ -113,18 +121,24 @@ contract Group {
     function ReceiveLot(
         address _lotAddr,
         address _owner,
-        uint _balance,
         bytes memory initParamsData,
         bytes memory proofResData,
         bytes memory playerParamsData
-    ) external {
+    ) external returns (uint newBalance){
         Params.InitParams memory initParams = Params.DecodeInitParams(initParamsData);
         Proof.ProofRes memory proof = Proof.DecodeProofRes(proofResData);
         proof.owner = _owner;
-        proof.balance = _balance;
         Params.PlayerParams memory params = Params.DecodePlayerParams(playerParamsData);
         IRound round = IRound(roundAddr);
-        uint newBalance = round.ReceiveLot(_lotAddr, initParams, proof, params);
+        bytes memory newParamsData;
+        (newBalance, newParamsData) = round.ReceiveLot(_lotAddr, initParams, proof, params);
+        Params.PlayerParams memory NewParams = Params.DecodePlayerParamsInTuple(newParamsData);
+        emit UpdatePlayerParams(
+            NewParams.owner, 
+            NewParams.nwin,
+            NewParams.n,
+            NewParams.spos,
+            NewParams.sneg);
         emit NewBalance(_owner, newBalance);
     }
 

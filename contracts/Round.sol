@@ -63,6 +63,14 @@ contract Round {
     );
 
 
+    event UpdateParamsPlayer(
+        address _owner,
+        uint _nwin,
+        uint _n,
+        uint _spos, 
+        uint _sneg
+    );
+
     
     fallback() external payable {}
 
@@ -89,13 +97,9 @@ contract Round {
     function StartRound() public onlyGroup {
         uint8 i=0;
         for (i = 0; i < pendingAddress.length; i++) {
-            balancesSnap = Math.xor(balancesSnap, uint256(
-                                                    keccak256(abi.encodePacked(
-                                                        uint256(uint160(pendingAddress[i])), 
-                                                        deposit
-                                                        )))
-                                        );          
-            uint psnap = Params.GetSnapParamPlayerOut(pendingAddress[i], deposit, 0, 0, 0, 0);
+            balancesSnap = Math.xor(
+                balancesSnap, uint256(keccak256(abi.encodePacked(uint256(uint160(pendingAddress[i])), deposit))));          
+            uint psnap = Params.GetSnapParamPlayerOut(pendingAddress[i], 0, 0, 0, 0);
             paramsSnap = Math.xor(psnap, paramsSnap);
         }
         balancesSnap = uint256(keccak256(abi.encode(balancesSnap)));
@@ -167,13 +171,12 @@ contract Round {
 
     function GetSnapParamPlayer( 
         address _owner,
-        uint _balance,
         uint _nwin,
         uint _n,
         uint _spos,
         uint _sneg 
         ) public pure returns(uint){
-            return uint(keccak256(abi.encodePacked(_owner, _balance, _nwin, _n, _spos, _sneg)));
+            return uint(keccak256(abi.encodePacked(_owner,  _nwin, _n, _spos, _sneg)));
         }
 
     // function updatePlus(
@@ -192,24 +195,36 @@ contract Round {
 
 
         function updatePlus(
+        uint _balance,
         Params.PlayerParams calldata _params,
         uint _delta,
         uint _price
-        ) private view returns(uint, uint){
-            uint curbalance = _params.balance + _price + 3*_delta;
+        ) private view returns(uint, uint, bytes memory dataParams){
+            uint curbalance = _balance + _price + 3*_delta;
             console.log("newBalance: ", curbalance);
-            return (GetSnapParamPlayer(_params.owner, curbalance, _params.nwin +1, 
-                _params.n +1, _params.spos + _delta, _params.sneg), curbalance);
+            dataParams = abi.encode(_params.owner, 
+                 _params.nwin +1, 
+                 _params.n +1, 
+                 _params.spos + _delta, 
+                 _params.sneg);
+            return (GetSnapParamPlayer(_params.owner, _params.nwin +1, 
+                _params.n +1, _params.spos + _delta, _params.sneg), curbalance, dataParams);
         }
 
     function updateMinus(
+        uint _balance,
         Params.PlayerParams calldata _params,
         uint _delta
-        ) private view returns(uint, uint){
-            uint curbalance = _params.balance - 3*_delta;
+        ) private view returns(uint, uint, bytes memory dataParams){
+            uint curbalance = _balance - 3*_delta;
             console.log("newBalance: ", curbalance);
-            return (GetSnapParamPlayer(_params.owner, curbalance, _params.nwin, 
-                _params.n +1, _params.spos, _params.sneg + _delta), curbalance);
+            dataParams = abi.encode(_params.owner, 
+                 _params.nwin, 
+                 _params.n +1, 
+                 _params.spos, 
+                 _params.sneg+_delta);
+            return (GetSnapParamPlayer(_params.owner, _params.nwin, 
+                _params.n +1, _params.spos, _params.sneg + _delta), curbalance, dataParams);
     }
 
     modifier correctParams(Params.PlayerParams memory _params){
@@ -223,20 +238,20 @@ contract Round {
         Params.InitParams calldata _init,
         Proof.ProofRes calldata _proof,
         Params.PlayerParams calldata _params
-    )  public onlyGroup correctParams(_params) returns(uint newBalance){
+    )  public onlyGroup correctParams(_params) returns(uint newBalance, bytes memory dataParams){
         IExchangeTest exc = IExchangeTest(exchangeAddress);
         ILot lot = ILot(_lotAddr);
         lot.Close(_init, _proof);
         uint initBal = address(this).balance;
-        uint val = exc.GetTokenBalance();
-        exc.TokenToEth(val);
+        exc.TokenToEth(exc.GetTokenBalance());
         int res = int(address(this).balance) - int(initBal) - int(_init.value);
 
         uint snapParams;
         res = int(10);
 
         if(res>=0){            
-            (snapParams, newBalance) = updatePlus(
+            (snapParams, newBalance, dataParams) = updatePlus(
+                _proof.balance,
                 _params, 
                 uint(res), 
                 _proof.price);
@@ -259,7 +274,8 @@ contract Round {
                             ))));
         }
         else{
-            (snapParams, newBalance) = updateMinus(
+            (snapParams, newBalance, dataParams) = updateMinus(
+                _proof.balance,
                 _params, 
                 uint(Math.Abs(res))
                 );
@@ -293,7 +309,7 @@ contract Round {
     }
 
     function GetBalance() public view returns (uint256) {
-        return addr.balance;
+        return address(this).balance;
     }
     
     function GetSnapshot() public view returns(uint256){

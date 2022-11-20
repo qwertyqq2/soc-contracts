@@ -5,7 +5,7 @@ import "./Round.sol";
 import "./interfaces/IRound.sol";
 
 import "./libraries/Proof.sol";
-import "./libraries/Prize.sol";
+import "./libraries/JumpSnap.sol";
 
 import "hardhat/console.sol";
 
@@ -103,74 +103,31 @@ contract Group {
 
     function SendLot(
         address _lotAddr,
-        uint256 _timeFirst,
-        uint256 _timeSecond,
-        uint256 _value
+        bytes memory initParamsData
     ) external{
+        Params.InitParams memory initParams = Params.DecodeInitParams(initParamsData);
         IRound round = IRound(roundAddr);
-        round.SendLot(_lotAddr, _timeFirst, _timeSecond, _value);
+        round.SendLot(_lotAddr, initParams);
     }
 
     function ReceiveLot(
         address _lotAddr,
-        uint256 _timeFirst,
-        uint256 _timeSecond,
-        uint256 _value,
-        address _addr,
-        uint256 _price,
-        uint _H,
+        address _owner,
         uint _balance,
-        uint _prevSnap
+        bytes memory initParamsData,
+        bytes memory proofResData,
+        bytes memory playerParamsData
     ) external {
-        Proof.ProofRes memory proof = Proof.NewProof(
-            _addr,
-            _price,
-            _H,
-            _balance
-        );
-        proof.prevSnap = _prevSnap;
+        Params.InitParams memory initParams = Params.DecodeInitParams(initParamsData);
+        Proof.ProofRes memory proof = Proof.DecodeProofRes(proofResData);
+        proof.owner = _owner;
+        proof.balance = _balance;
+        Params.PlayerParams memory params = Params.DecodePlayerParams(playerParamsData);
         IRound round = IRound(roundAddr);
-        uint newBalance = round.ReceiveLot(_lotAddr, _timeFirst, _timeSecond, _value, proof);
-        emit NewBalance(_addr, newBalance);
+        uint newBalance = round.ReceiveLot(_lotAddr, initParams, proof, params);
+        emit NewBalance(_owner, newBalance);
     }
 
-    function CancelLot(
-        address _lotAddr,
-        uint256 _currentPrice,
-        uint _H,
-        uint256 _balance,
-        address _prevOwner,
-        uint256 _prevPrice,
-        uint256 _prevSnap
-        ) public {
-        Proof.ProofRes memory proofRes = Proof.NewProof(msg.sender, _currentPrice, _H, _balance);
-        Proof.ProofEnoungPrice memory proofEP = Proof.NewProofEnoughPrice(_prevOwner, _prevPrice, _prevSnap);
-        IRound round = IRound(roundAddr);
-        round.CancelLot(_lotAddr, proofRes, proofEP);
-
-    }
-
-    function SendCancelLot(
-        address _lotAddr,
-        uint256 _timeFirst,
-        uint256 _timeSecond,
-        uint256 _value,
-        address _sender
-    ) external {
-        IRound round = IRound(roundAddr);
-        round.SendCanceled(_lotAddr, _timeFirst, _timeSecond, _value, _sender);
-    }
-
-    function ReceiveCancelLot(
-        address _lotAddr,
-        uint256 _timeFirst,
-        uint256 _timeSecond,
-        uint256 _value,
-        address _sender
-    ) external{
-        IRound round = IRound(roundAddr);
-        round.ReceiveCanceled(_lotAddr, _timeFirst, _timeSecond, _value, _sender);
-    }
 
     function GetSnap() public view returns (uint256) {
         IRound round = IRound(roundAddr);
@@ -200,4 +157,18 @@ contract Group {
         IRound round = IRound(roundAddr);
         return round.VerifyProofRes(proofRes);
     }
-}
+
+    function VerifyParamsPlayer(
+        bytes memory playerParamsData
+    ) external view returns(bool){
+        Params.PlayerParams memory params = Params.DecodePlayerParams(playerParamsData);
+        IRound round = IRound(roundAddr);
+        return round.VerifyParamsPlayer(params);
+    }
+
+    function GetParamsSnapshot() external view returns(uint){
+        IRound round = IRound(roundAddr);
+        return round.GetParamsSnapshot();
+    }
+
+}  

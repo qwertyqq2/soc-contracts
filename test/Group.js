@@ -12,15 +12,21 @@ beforeEach(async function () {
     const plib = await proofLib.deploy();
     await plib.deployed();
 
-    const prizeLib = await ethers.getContractFactory("Prize");
-    const prizelib = await prizeLib.deploy();
-    await prizelib.deployed();
+    const paramsLib = await ethers.getContractFactory("Params");
+    const paramslib = await paramsLib.deploy();
+    await paramslib.deployed();
+
+
+    const jumpLib = await ethers.getContractFactory("JumpSnap");
+    const jumplib = await jumpLib.deploy();
+    await jumplib.deployed();
 
     Group = await ethers.getContractFactory("Group", {
         libraries: {
             Math: mlib.address,
             Proof: plib.address,
-            Prize: prizelib.address,
+            Params: paramslib.address,
+            JumpSnap: jumplib.address
         },
     });
 
@@ -79,6 +85,15 @@ describe.only("Snapshot players", async () => {
         const mlib = await mathLib.deploy();
         await mlib.deployed();
 
+        const paramsLib = await ethers.getContractFactory("Params");
+        const paramslib = await paramsLib.deploy();
+        await paramslib.deployed();
+
+
+        const proofLib = await ethers.getContractFactory("Proof");
+        const plib = await proofLib.deploy();
+        await plib.deployed();
+
         const accounts = await ethers.getSigners();
 
 
@@ -86,10 +101,57 @@ describe.only("Snapshot players", async () => {
 
         let balances = []
         let addresses = []
+        let params = []
+
 
         for (let i = 0; i < accounts.length; i++) {
             balances.push(BigInt(deposit))
             addresses.push(accounts[i].address)
+            params.push(
+                {
+                    owner: accounts[i].address,
+                    balance: deposit,
+                    nwin: 0,
+                    n: 0,
+                    spos: 0,
+                    sneg: 0,
+                }
+            )
+        }
+
+        async function GetProofParams(CurrentNumber) {
+            let H1 = await group.GetInitSnapRound()
+            for (let i = 0; i < CurrentNumber; i++) {
+                snap = await paramslib.GetSnapParamPlayerOut(
+                    params[i].owner,
+                    params[i].balance,
+                    params[i].nwin,
+                    params[i].n,
+                    params[i].spos,
+                    params[i].sneg
+                )
+                H1 = await mlib.xor(H1, snap)
+            }
+            let H2 = await paramslib.GetSnapParamPlayerOut(
+                params[CurrentNumber + 1].owner,
+                params[CurrentNumber + 1].balance,
+                params[CurrentNumber + 1].nwin,
+                params[CurrentNumber + 1].n,
+                params[CurrentNumber + 1].spos,
+                params[CurrentNumber + 1].sneg
+            )
+            for (let i = CurrentNumber + 2; i < accounts.length; i++) {
+                snap = await paramslib.GetSnapParamPlayerOut(
+                    params[i].owner,
+                    params[i].balance,
+                    params[i].nwin,
+                    params[i].n,
+                    params[i].spos,
+                    params[i].sneg
+                )
+                H2 = await mlib.xor(H2, snap)
+            }
+            return await mlib.xor(H1, H2);
         }
 
         async function GetProofPlayer(CurrentNumber) {
@@ -138,6 +200,22 @@ describe.only("Snapshot players", async () => {
             let prevNumber = creatorNumber;
 
 
+            Hp = await GetProofParams(ownerNumber);
+
+            let dataParams = await paramslib.EncodePlayerParams(
+                params[ownerNumber].owner,
+                params[ownerNumber].balance,
+                params[ownerNumber].nwin,
+                params[ownerNumber].n,
+                params[ownerNumber].spos,
+                params[ownerNumber].sneg,
+                Hp
+            );
+
+            let flag = await group.VerifyParamsPlayer(dataParams);
+            console.log(flag);
+
+
             for (let i = 1; i <= ownerNumber; i++) {
                 Hres = await GetProofPlayer(i);
                 Hd = await GetProofPlayerDouble(prevNumber, i);
@@ -161,13 +239,43 @@ describe.only("Snapshot players", async () => {
                 snapshot = await mlib.GetNewBuySnapshot(owner, price, snapshot);
             }
 
-            await group.connect(accounts[0]).SendLot(lotAddr, timeF, timeS, value);
+            ///Encode send///
 
-            H = await GetProofPlayer(ownerNumber);
+            let dataInit = await paramslib.EncodeInitParams(timeF, timeS, value);
+
+            await group.connect(accounts[0]).SendLot(lotAddr, dataInit);
+
+            Hres = await GetProofPlayer(ownerNumber);
+            Hp = await GetProofParams(ownerNumber);
 
 
-            const receiveTx = await group.connect(accounts[0]).ReceiveLot(lotAddr, timeF, timeS, value,
-                owner, price, H, balances[ownerNumber], prevSnapshot);
+            const dataProof = await plib.EncodeProofRes(price, Hres, prevSnapshot);
+
+
+            Hp = await GetProofParams(ownerNumber);
+
+            dataParams = await paramslib.EncodePlayerParams(
+                params[ownerNumber].owner,
+                params[ownerNumber].balance,
+                params[ownerNumber].nwin,
+                params[ownerNumber].n,
+                params[ownerNumber].spos,
+                params[ownerNumber].sneg,
+                Hp
+            );
+
+            flag = await group.VerifyParamsPlayer(dataParams);
+            console.log(flag);
+
+
+            const receiveTx = await group.connect(accounts[0]).ReceiveLot(
+                lotAddr,
+                addresses[ownerNumber],
+                balances[ownerNumber],
+                dataInit,
+                dataProof,
+                dataParams
+            );
 
             const result = await receiveTx.wait();
 
@@ -186,80 +294,9 @@ describe.only("Snapshot players", async () => {
         let initPrice = 100;
 
 
-        let creatorNumber = 10;
+        let creatorNumber = 17;
         let ownerNumber = 12;
 
         await IterLot(lotAddr1, creatorNumber, ownerNumber, timeF, timeS, value, initPrice);
-
-
     })
-
-    it("Cancel", async () => {
-        const mathLib = await ethers.getContractFactory("Math");
-        const mlib = await mathLib.deploy();
-        await mlib.deployed();
-
-        const accounts = await ethers.getSigners();
-
-        //Data user//
-
-        let balances = []
-        let addresses = []
-
-        for (let i = 0; i < accounts.length; i++) {
-            balances.push(deposit)
-            addresses.push(accounts[i].address)
-        }
-
-        async function GetProofPlayer(N) {
-            let H1 = await group.GetInitSnapRound()
-            for (let i = 0; i < N; i++) {
-                snap = await mlib.GetSnap(addresses[i], balances[i])
-                H1 = await mlib.xor(H1, snap)
-            }
-            let H2 = await mlib.GetSnap(accounts[N + 1].address, deposit)
-            for (let i = N + 2; i < accounts.length; i++) {
-                snap = await mlib.GetSnap(accounts[i].address, deposit)
-                H2 = await mlib.xor(H2, snap)
-            }
-            return [H1, H2]
-        }
-
-
-        const N = 10;
-        [H1, H2] = await GetProofPlayer(N)
-
-
-        //lot//`
-        const timeF = 123123123
-        const timeS = 1231231231212
-        const price = 100
-        const value = 10
-
-        await group.connect(accounts[N]).CreateLot(timeF, timeS, price, value, H1, H2, balances[N]);
-        let snapshot = await mlib.GetNewBuySnapshot(accounts[N].address, price, 0);
-        [H1, H2] = await GetProofPlayer(N);
-        let prevSnapshot = 0
-        let prevOwner = accounts[N].address
-        let prevPrice = price
-        const last = 10
-        for (let i = 1; i <= last; i++) {
-            [H1, H2] = await GetProofPlayer(i)
-            await group.connect(accounts[i]).BuyLot(price + i, H1, H2, balances[i],
-                prevOwner, prevPrice, prevSnapshot)
-            prevSnapshot = snapshot
-            prevOwner = accounts[i].address
-            prevPrice = price + i
-            snapshot = mlib.GetNewBuySnapshot(accounts[i].address, price + i, snapshot)
-        }
-
-        [H1, H2] = await GetProofPlayer(0);
-        await group.connect(accounts[0]).CancelLot(price + last, H1, H2, balances[0],
-            prevOwner, prevPrice, prevSnapshot)
-
-
-        await group.SendCancelLot(timeF, timeS, value, accounts[0].address)
-        await group.ReceiveCancelLot(timeF, timeS, value, accounts[0].address)
-    })
-
 })

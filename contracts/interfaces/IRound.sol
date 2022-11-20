@@ -2,6 +2,8 @@
 pragma solidity  ^0.7.0 || ^0.8.0;
 
 import "../libraries/Proof.sol";
+import "../libraries/Params.sol";
+
 
 interface IRound {
     function Enter(address _sender, uint256 _value) external;
@@ -30,43 +32,17 @@ interface IRound {
 
     function SendLot(
         address _lotAddr,
-        uint256 _timeFirst,
-        uint256 _timeSecond,
-        uint256 _value
+        Params.InitParams memory initParams
     ) external;
 
     function ReceiveLot(
         address _lotAddr,
-        uint256 _timeFirst,
-        uint256 _timeSecond,
-        uint256 _value,
-        Proof.ProofRes memory proof
+        Params.InitParams calldata _init,
+        Proof.ProofRes calldata _proof,
+        Params.PlayerParams calldata _params
     ) external returns(uint);
 
-   
-    function CancelLot(
-        address _lotAddr,
-        Proof.ProofRes calldata proofRes, 
-        Proof.ProofEnoungPrice calldata proofEP
-    ) external;
 
-
-    function SendCanceled(
-        address _lotAddr,
-        uint256 _timeFirst,
-        uint256 _timeSecond,
-        uint256 _value,
-        address _sender
-    ) external;
-
-
-    function ReceiveCanceled(
-        address _lotAddr,
-        uint256 _timeFirst,
-        uint256 _timeSecond,
-        uint256 _value,
-        address _sender
-    ) external;
 
     function GetSnap() external view returns (uint256);
 
@@ -81,4 +57,10 @@ interface IRound {
     function VerifyProofRes(
         Proof.ProofRes calldata proof
     ) external view returns(bool);
+
+    function VerifyParamsPlayer(
+        Params.PlayerParams calldata _params
+    ) external view returns(bool);
+
+    function GetParamsSnapshot() external view returns(uint);
 }

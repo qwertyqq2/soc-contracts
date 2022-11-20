@@ -9,7 +9,8 @@ import "./interfaces/IRound.sol";
 
 import "./libraries/Proof.sol";
 import "./libraries/Math.sol";
-import "./libraries/Prize.sol";
+import "./libraries/JumpSnap.sol";
+import "./libraries/Params.sol";
 
 
 import "./ExchangeTest.sol";
@@ -21,7 +22,6 @@ contract Round {
     address addr;
 
     mapping(address => uint256) players;
-    uint256 balance;
     uint256 timeCreation;
     address groupAddress;
     mapping(address => uint256) pendingPlayers;
@@ -32,7 +32,10 @@ contract Round {
     address lotAddr;
 
     uint256 balancesSnap = 115792089237316195423570985008687907853269984665640564039457584007913129639935;
+    uint256 paramsSnap = 115792089237316195423570985008687907853269984665640564039457584007913129639935;
 
+    uint Spos = 0;
+    uint Sneg = 0;
 
     constructor(uint256 _deposit) {
         groupAddress = msg.sender;
@@ -73,7 +76,6 @@ contract Round {
     function Enter(address _sender, uint256 _value) public onlyGroup {
         require(_value >= deposit, "Not enouth deposit");
         pendingPlayers[_sender] += _value;
-        balance += _value;
         pendingAddress.push(_sender);
     }
 
@@ -87,15 +89,17 @@ contract Round {
     function StartRound() public onlyGroup {
         uint8 i=0;
         for (i = 0; i < pendingAddress.length; i++) {
-            pendingPlayers[pendingAddress[i]] = 0;
             balancesSnap = Math.xor(balancesSnap, uint256(
                                                     keccak256(abi.encodePacked(
                                                         uint256(uint160(pendingAddress[i])), 
                                                         deposit
                                                         )))
-                                        );
+                                        );          
+            uint psnap = Params.GetSnapParamPlayerOut(pendingAddress[i], deposit, 0, 0, 0, 0);
+            paramsSnap = Math.xor(psnap, paramsSnap);
         }
         balancesSnap = uint256(keccak256(abi.encode(balancesSnap)));
+        paramsSnap = uint256(keccak256(abi.encode(paramsSnap)));
         timeCreation = block.timestamp;
     }
 
@@ -121,7 +125,7 @@ contract Round {
         uint256 _val,
         Proof.ProofRes calldata proof
     ) public onlyGroup enoughRes(proof) {
-        balancesSnap = Prize.SnapNew(proof.owner, proof.balance, proof.price, proof.Hres);
+        balancesSnap = JumpSnap.SnapNew(proof.owner, proof.balance, proof.price, proof.Hres);
         ILot lot = ILot(_lotAddr);
         lot.New(_timeFirst, _timeSecond, proof.owner, proof.price, _val);
     }
@@ -131,7 +135,7 @@ contract Round {
         Proof.ProofRes calldata proofRes, 
         Proof.ProofEnoungPrice calldata proofEP 
      ) public onlyGroup enoughRes(proofRes) {
-        balancesSnap = Prize.SnapBuy(
+        balancesSnap = JumpSnap.SnapBuy(
             proofRes.owner,
             proofRes.prevOwner,
             proofRes.balance,
@@ -147,93 +151,141 @@ contract Round {
 
     function SendLot(
         address _lotAddr,
-        uint256 _timeFirst,
-        uint256 _timeSecond,
-        uint256 _value
+        Params.InitParams memory initParams
     ) public onlyGroup{
         IExchangeTest exc = IExchangeTest(exchangeAddress);
         ILot lot = ILot(_lotAddr);
-        lot.End(_timeFirst, _timeSecond, _value);
+        lot.End(initParams);
+
+        lot.SetInitBalance(address(this).balance);
         uint initBal = exc.GetTokenBalance();
-        exc.EthToToken{value: _value}();
+        exc.EthToToken{value: initParams.value}();
         lot.SetReceiveTokens(exc.GetTokenBalance() - initBal);
+        
         console.log("Lot sent ");
     }
 
+    function GetSnapParamPlayer( 
+        address _owner,
+        uint _balance,
+        uint _nwin,
+        uint _n,
+        uint _spos,
+        uint _sneg 
+        ) public pure returns(uint){
+            return uint(keccak256(abi.encodePacked(_owner, _balance, _nwin, _n, _spos, _sneg)));
+        }
 
+    // function updatePlus(
+    //     Params.PlayerParams calldata _params,
+    //     uint _Spos,
+    //     uint _delta,
+    //     uint _price
+    //     ) private view returns(uint, uint){
+    //         uint s_ = (_params.spos + _delta)*100/_Spos;
+    //         uint d_ = (1000000 - (_params.balance + _price))*s_/100;
+    //         uint curbalance = _params.balance + _price + d_;
+    //         console.log("newBalance: ", curbalance);
+    //         return (GetSnapParamPlayer(_params.owner, curbalance, _params.nwin +1, 
+    //             _params.n +1, _params.spos + _delta, _params.sneg), curbalance);
+    //     }
+
+
+        function updatePlus(
+        Params.PlayerParams calldata _params,
+        uint _delta,
+        uint _price
+        ) private view returns(uint, uint){
+            uint curbalance = _params.balance + _price + 3*_delta;
+            console.log("newBalance: ", curbalance);
+            return (GetSnapParamPlayer(_params.owner, curbalance, _params.nwin +1, 
+                _params.n +1, _params.spos + _delta, _params.sneg), curbalance);
+        }
+
+    function updateMinus(
+        Params.PlayerParams calldata _params,
+        uint _delta
+        ) private view returns(uint, uint){
+            uint curbalance = _params.balance - 3*_delta;
+            console.log("newBalance: ", curbalance);
+            return (GetSnapParamPlayer(_params.owner, curbalance, _params.nwin, 
+                _params.n +1, _params.spos, _params.sneg + _delta), curbalance);
+    }
+
+    modifier correctParams(Params.PlayerParams memory _params){
+        uint snap = Params.GetSnapParamPlayer(_params);
+        uint val = Math.xor(_params.Hp, snap);
+        require(uint(keccak256(abi.encode(val)))==paramsSnap, "Not correct params");
+        _;
+    }
     function ReceiveLot(
         address _lotAddr,
-        uint256 _timeFirst,
-        uint256 _timeSecond,
-        uint256 _value,
-        Proof.ProofRes calldata proof
-    )  public onlyGroup returns(uint newBalance){
+        Params.InitParams calldata _init,
+        Proof.ProofRes calldata _proof,
+        Params.PlayerParams calldata _params
+    )  public onlyGroup correctParams(_params) returns(uint newBalance){
         IExchangeTest exc = IExchangeTest(exchangeAddress);
         ILot lot = ILot(_lotAddr);
-        lot.Close(_timeFirst, _timeSecond, _value, proof);
+        lot.Close(_init, _proof);
         uint initBal = address(this).balance;
         uint val = exc.GetTokenBalance();
         exc.TokenToEth(val);
-        int res = int(address(this).balance) - int(initBal) - int(_value);
-        if(res>=0) (balancesSnap, newBalance)  = Prize.Update(
-                                                    proof.owner,
-                                                    proof.balance, 
-                                                    proof.Hres,
-                                                    int(proof.price)
-                                                    );
-        else (balancesSnap, newBalance) = Prize.Update(
-                                                    proof.owner, 
-                                                    proof.balance,
-                                                    proof.Hres,
-                                                    -int(proof.price)
-                                                    );
+        int res = int(address(this).balance) - int(initBal) - int(_init.value);
+
+        uint snapParams;
+        res = int(10);
+
+        if(res>=0){            
+            (snapParams, newBalance) = updatePlus(
+                _params, 
+                uint(res), 
+                _proof.price);
+
+            balancesSnap =  uint256(
+                keccak256(
+                    abi.encode(
+                        Math.xor(
+                            _proof.Hres, 
+                            uint256(keccak256(abi.encodePacked(uint256(uint160(_params.owner)),  newBalance)))
+                            ))));
+
+
+            paramsSnap =  uint256(
+                keccak256(
+                    abi.encode(
+                        Math.xor(
+                            _params.Hp, 
+                            snapParams
+                            ))));
+        }
+        else{
+            (snapParams, newBalance) = updateMinus(
+                _params, 
+                uint(Math.Abs(res))
+                );
+
+            balancesSnap =  uint256(
+                keccak256(
+                    abi.encode(
+                        Math.xor(
+                            _proof.Hres, 
+                            uint256(keccak256(abi.encodePacked(uint256(uint160(_params.owner)),  newBalance)))
+                            ))));
+
+
+            paramsSnap =  uint256(
+                keccak256(
+                    abi.encode(
+                        Math.xor(
+                            _params.Hp, 
+                            snapParams
+                            ))));
+
+        }
         console.log("Lot received");
     }
 
 
-    function CancelLot(
-        address _lotAddr,
-        Proof.ProofRes calldata proofRes, 
-        Proof.ProofEnoungPrice calldata proofEP
-    ) external enoughRes(proofRes){
-        ILot lot = ILot(_lotAddr);
-        lot.Cancel(proofRes.owner, proofEP.prevPrice, proofEP);
-        console.log("Cancel lot: ", proofRes.owner);
-    }
-
-    function SendCanceled(
-        address _lotAddr,
-        uint256 _timeFirst,
-        uint256 _timeSecond,
-        uint256 _value,
-        address _sender
-    ) external onlyGroup{
-        IExchangeTest exc = IExchangeTest(exchangeAddress);
-        ILot lot = ILot(_lotAddr);
-        lot.EndCancel(_timeFirst, _timeSecond, _value, _sender);
-        uint count = exc.EthToTokenVirtual(_value);
-        lot.SetReceiveTokens(count);
-    }
-
-    function ReceiveCanceled(
-        address _lotAddr,
-        uint256 _timeFirst,
-        uint256 _timeSecond,
-        uint256 _value,
-        address _sender
-    ) external onlyGroup{
-        IExchangeTest exc = IExchangeTest(exchangeAddress);
-        ILot lot = ILot(_lotAddr);
-        lot.CloseCancel(_timeFirst, _timeSecond, _value, _sender);
-        uint count = lot.GetReceiveTokens();
-        uint res = exc.TokenToEthVirtual(count);
-        if(res<0){
-            console.log("it was in vain");
-        }
-        else{
-            console.log("You`re right");
-        }
-    }
 
     function GetSnap() public view returns (uint256) {
         ILot lot = ILot(lotAddr);
@@ -263,5 +315,15 @@ contract Round {
         return snap==balancesSnap;
     }
 
-    
+    function VerifyParamsPlayer(
+        Params.PlayerParams calldata _params
+    ) external view returns(bool){
+        uint snap = Params.GetSnapParamPlayer(_params);
+        uint val = Math.xor(_params.Hp, snap);
+        return uint(keccak256(abi.encode(val))) == paramsSnap;
+    }
+
+    function GetParamsSnapshot() external view returns(uint){
+        return paramsSnap;
+    }
 }

@@ -4,6 +4,7 @@ pragma solidity  ^0.7.0 || ^0.8.0;
 import "./interfaces/IExchangeTest.sol";
 
 import "./libraries/Proof.sol";
+import "./libraries/Params.sol";
 
 
 import "hardhat/console.sol";
@@ -19,6 +20,7 @@ contract Lot {
     uint state;
 
     uint receiveToken;
+    uint initBalance;
     
     event NewLot(
         uint256 timeFirst,
@@ -106,11 +108,9 @@ contract Lot {
 
 
     modifier proofInit(
-        uint256 timeFirst,
-        uint256 timeSecond,
-        uint256 value
+        Params.InitParams calldata init
     ){
-        require(snapInit(timeFirst, timeSecond, value) == snapshot1, "Not proof init");
+        require(snapInit(init.timeFirst, init.timeSecond, init.value) == snapshot1, "Not proof init");
         _;
     }
 
@@ -123,60 +123,17 @@ contract Lot {
 
 
     function End(
-        uint256 _timeFirst,
-        uint256 _timeSecond,
-        uint256 _value
-        ) public onlyRound proofInit(_timeFirst, _timeSecond, _value) {
+        Params.InitParams calldata init
+        ) public onlyRound proofInit(init) {
         require(block.timestamp> 0, "Not correct time");
         state = uint256(keccak256(abi.encode("wait")));
     }
 
     function Close(
-        uint256 _timeFirst,
-        uint256 _timeSecond,
-        uint256 _value,
+        Params.InitParams calldata init,
         Proof.ProofRes calldata proof
-    ) public onlyRound proofInit(_timeFirst, _timeSecond, _value) proofOwner(proof){
+    ) public onlyRound proofInit(init) proofOwner(proof){
         require(state == uint256(keccak256(abi.encode("wait"))), "not wait");
-        require(block.timestamp>0, "Not correct time");
-        state = uint256(keccak256(abi.encode("closed")));
-    }
-
-
-
-    modifier correctCancel(Proof.ProofEnoungPrice calldata proof){
-        uint proofSnap = Proof.GetProofEnoughPrice(proof);
-        require(proofSnap == snapshot, "Not right previous owner");
-        _;
-    }
-
-    function Cancel(
-        address _sender,
-        uint _price,
-        Proof.ProofEnoungPrice calldata proof
-    ) public onlyRound correctCancel(proof){
-        require(_price == proof.prevPrice, "Not correct price");
-        state = uint256(keccak256(abi.encodePacked("canceled", _sender)));
-    }
-
-    function EndCancel(
-        uint256 _timeFirst,
-        uint256 _timeSecond,
-        uint256 _value,
-        address _sender
-        ) public onlyRound proofInit(_timeFirst, _timeSecond, _value) {
-        require(state == uint256(keccak256(abi.encodePacked("canceled", _sender))));
-        require(block.timestamp> 0, "Not correct time");
-        state = uint256(keccak256(abi.encodePacked("wait canceled", _sender)));
-    }
-
-    function CloseCancel(
-        uint256 _timeFirst,
-        uint256 _timeSecond,
-        uint256 _value,
-        address _sender
-    ) public onlyRound proofInit(_timeFirst, _timeSecond, _value){
-        require(state == uint256(keccak256(abi.encodePacked("wait canceled", _sender))));
         require(block.timestamp>0, "Not correct time");
         state = uint256(keccak256(abi.encode("closed")));
     }
@@ -207,6 +164,15 @@ contract Lot {
 
     function GetReceiveTokens() external view returns(uint){
         return receiveToken;
+    }
+
+    function SetInitBalance(uint _initBal) external onlyRound{
+        require(_initBal>0);
+        initBalance = _initBal;
+    }
+
+    function GetInitBalance() external view returns(uint){
+        return initBalance;
     }
 
      function GetSnap() external view returns (uint256) {

@@ -30,6 +30,20 @@ library Proof {
     }
 
 
+    function EncodeProofRes(
+        uint256 _price,
+        uint256 _Hres,
+        uint256 _prevSnap
+    ) external pure returns(bytes memory data){
+        data = abi.encode( _price, _Hres, _prevSnap);
+    }
+
+    function DecodeProofRes(bytes memory data)
+        external pure returns(ProofRes memory proof){
+            ( proof.price, proof.Hres,  proof.prevSnap) = 
+                abi.decode(data, (uint, uint, uint));
+        }
+
     function snap(ProofRes calldata proof) internal pure returns(uint256) {
         return uint256(
                 keccak256(
@@ -63,7 +77,8 @@ library Proof {
         uint prevSnap;
     }
 
-    function NewProofEnoughPrice(address _prevOwner, uint _prevPrice, uint _prevSnap) external pure returns(ProofEnoungPrice memory){
+    function NewProofEnoughPrice(address _prevOwner, uint _prevPrice, uint _prevSnap) 
+        external pure returns(ProofEnoungPrice memory){
         ProofEnoungPrice memory proof;
         proof.prevOwner = _prevOwner;
         proof.prevPrice = _prevPrice;
@@ -71,7 +86,8 @@ library Proof {
         return proof;
     }
 
-    function GetProofEnoughPrice(ProofEnoungPrice calldata proof) external pure returns(uint256){
+    function GetProofEnoughPrice(ProofEnoungPrice calldata proof) 
+        external pure returns(uint256){
         return  uint256(
             keccak256(
                 abi.encodePacked(

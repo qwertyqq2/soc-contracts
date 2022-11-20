@@ -62,5 +62,9 @@ library Math {
         return uint256(keccak256(abi.encode(snap)));
     }
 
+    function Abs(int x) public  pure returns (int) {
+        return x >= 0 ? x : -x;
+    }
+
 
 }

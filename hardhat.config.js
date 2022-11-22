@@ -1,8 +1,9 @@
 require("@nomicfoundation/hardhat-toolbox");
 require('solidity-coverage')
-require('@openzeppelin/hardhat-upgrades');
 require("hardhat-gas-reporter");
+require("@nomiclabs/hardhat-ganache");
 require('dotenv').config();
+
 
 
 module.exports = {
@@ -11,15 +12,17 @@ module.exports = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 100000000,
       },
     },
   },
+  //defaultNetwork: "ganache",
   networks: {
-    hardhat: {
-      allowUnlimitedContractSize: true,
+    goerli: {
+      url: `https://eth-goerli.alchemyapi.io/v2/${process.env.ALCHEMY_API_KEY}`,
+      accounts: [process.env.GOERLI_PRIVATE_KEY]
     }
   },
+
   gasReporter: {
     outputFile: "gas-report.txt",
     enabled: process.env.REPORT_GAS !== undefined,

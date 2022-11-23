@@ -28,6 +28,8 @@ contract Group {
         uint _sneg
     );
 
+    event SendLotOut(uint _amountOut);
+
     address owner;
     address roundAddr;
     address exchangeAddress;
@@ -115,7 +117,8 @@ contract Group {
     ) external{
         Params.InitParams memory initParams = Params.DecodeInitParams(initParamsData);
         IRound round = IRound(roundAddr);
-        round.SendLot(_lotAddr, initParams);
+        uint amountOut = round.SendLot(_lotAddr, initParams);
+        emit SendLotOut(amountOut);
     }
 
     function ReceiveLot(
@@ -183,6 +186,26 @@ contract Group {
     function GetParamsSnapshot() external view returns(uint){
         IRound round = IRound(roundAddr);
         return round.GetParamsSnapshot();
+    }
+
+    function GetDepositRound() external view returns(uint, uint){
+        IRound round = IRound(roundAddr);
+        return round.GetDeposit();
+    }
+
+    function SwapEthToDai(uint amountIn) external{
+        IRound round = IRound(roundAddr);
+        round.Swap1(amountIn);
+    }
+
+    function SwapDaiToEth(uint amountIn) external{
+        IRound round = IRound(roundAddr);
+        round.Swap2(amountIn);
+    }
+
+    function GetReceiveRoken(address _lotAddr) external view returns(uint){
+        IRound round = IRound(roundAddr);
+        return round.GetReceiveToken(_lotAddr);
     }
 
 }  

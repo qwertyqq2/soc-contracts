@@ -1,24 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
-import "hardhat/console.sol";
 
 
 import "./interfaces/ISwapRouter.sol";
 import "./interfaces/IQuoter.sol";
 import "./interfaces/IERC20.sol";
 
+import "hardhat/console.sol";
 
 
-contract UniV3Test {
+contract UniV3Router {
     ISwapRouter constant router = ISwapRouter(0xE592427A0AEce92De3Edee1F18E0157C05861564);
     
-    address constant WETH = 0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6;
-    address constant DAI = 0x11fE4B6AE13d2a6055C8D9cF65c55bac32B5d844;
+    address constant WETH = 0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889;
+    address constant DAI = 0x001B3B4d0F3714Ca98ba10F6042DaEbF0B1B7b6F;
     uint24 constant fee = 3000;
 
+    constructor(){}
 
-    function swapWETHToDAI(uint amountIn) external returns(uint256 amountOut){
+    function swapWETHToDAI(uint amountIn) external returns(uint256){
         uint balWETH = IWETH(WETH).balanceOf(address(this));
         require(balWETH>=amountIn, "Not enough eth on contract");
         IERC20(WETH).approve(address(router), amountIn);
@@ -35,13 +36,13 @@ contract UniV3Test {
                 sqrtPriceLimitX96: 0
             });
 
-        amountOut = router.exactInputSingle(params);
+        return router.exactInputSingle(params);
     }
 
 
-    function swapDAItoWETH(uint amountIn) external returns(uint256 amountOut){
-        uint balDAI = IERC20(DAI).balanceOf(address(this));
-        require(balDAI>=amountIn, "Not enough dai on contract");
+    function swapDAItoWETH(uint amountIn) external returns(uint256){
+        //uint balDAI = IERC20(DAI).balanceOf(address(this));
+        //require(balDAI>=amountIn, "Not enough dai on contract");
         IERC20(DAI).approve(address(router), amountIn);
     
         ISwapRouter.ExactInputSingleParams memory params =
@@ -55,16 +56,17 @@ contract UniV3Test {
                 amountOutMinimum: 0,
                 sqrtPriceLimitX96: 0
             });
-        amountOut = router.exactInputSingle(params);
+        return router.exactInputSingle(params);
     } 
 
 
 
-    function Enter() external payable{
+    function Deposit() external payable{
+        console.log("start");
         IWETH(WETH).deposit{value: msg.value}();
     }
 
-    function curPrice1(uint _amountIn) external returns(uint256){
+    function curPriceWETHtoDAI(uint _amountIn) external returns(uint256){
         IQuoter quoter = IQuoter(0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6);
         return quoter.quoteExactInputSingle({
             tokenIn: WETH,
@@ -75,7 +77,7 @@ contract UniV3Test {
         });
     }
 
-    function curPrice2(uint _amountIn) external returns(uint256){
+    function curPriceDAItoWETH(uint _amountIn) external returns(uint256){
         IQuoter quoter = IQuoter(0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6);
         return quoter.quoteExactInputSingle({
             tokenIn: DAI,

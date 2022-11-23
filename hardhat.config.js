@@ -1,3 +1,5 @@
+const { default: Ganache } = require("ganache");
+
 require("@nomicfoundation/hardhat-toolbox");
 require('solidity-coverage')
 require("hardhat-gas-reporter");
@@ -15,12 +17,12 @@ module.exports = {
       },
     },
   },
-  //defaultNetwork: "ganache",
+  defaultNetwork: "hardhat",
   networks: {
-    goerli: {
-      url: `https://eth-goerli.alchemyapi.io/v2/${process.env.ALCHEMY_API_KEY}`,
-      accounts: [process.env.GOERLI_PRIVATE_KEY]
-    }
+    mumbai: {
+      url: `https://polygon-mumbai.g.alchemy.com/v2/${process.env.MUMBAI_RPC}`,
+      accounts: [process.env.PK_KEY1, process.env.PK_KEY2, process.env.PK_KEY3, process.env.PK_KEY4],
+    },
   },
 
   gasReporter: {

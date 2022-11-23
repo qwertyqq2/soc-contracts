@@ -119,49 +119,33 @@ describe.only("Snapshot players", async () => {
         }
 
         async function GetProofParams(CurrentNumber) {
-            let H1 = await group.GetInitSnapRound()
-            for (let i = 0; i < CurrentNumber; i++) {
-                snap = await paramslib.GetSnapParamPlayerOut(
-                    params[i].owner,
-                    params[i].nwin,
-                    params[i].n,
-                    params[i].spos,
-                    params[i].sneg
-                )
-                H1 = await mlib.xor(H1, snap)
+            let H = await group.GetInitSnapRound();
+            let snap;
+            for (let i = 0; i < accounts.length; i++) {
+                if (i != CurrentNumber) {
+                    snap = await paramslib.GetSnapParamPlayerOut(
+                        params[i].owner,
+                        params[i].nwin,
+                        params[i].n,
+                        params[i].spos,
+                        params[i].sneg
+                    )
+                    H = await mlib.xor(H, snap)
+                }
             }
-            let H2 = await paramslib.GetSnapParamPlayerOut(
-                params[CurrentNumber + 1].owner,
-                params[CurrentNumber + 1].nwin,
-                params[CurrentNumber + 1].n,
-                params[CurrentNumber + 1].spos,
-                params[CurrentNumber + 1].sneg
-            )
-            for (let i = CurrentNumber + 2; i < accounts.length; i++) {
-                snap = await paramslib.GetSnapParamPlayerOut(
-                    params[i].owner,
-                    params[i].nwin,
-                    params[i].n,
-                    params[i].spos,
-                    params[i].sneg
-                )
-                H2 = await mlib.xor(H2, snap)
-            }
-            return await mlib.xor(H1, H2);
+            return H;
         }
 
         async function GetProofPlayer(CurrentNumber) {
-            let H1 = await group.GetInitSnapRound()
-            for (let i = 0; i < CurrentNumber; i++) {
-                snap = await mlib.GetSnap(addresses[i], balances[i])
-                H1 = await mlib.xor(H1, snap)
+            let H = await group.GetInitSnapRound();
+            let snap;
+            for (let i = 0; i < accounts.length; i++) {
+                if (i != CurrentNumber) {
+                    snap = await mlib.GetSnap(addresses[i], balances[i]);
+                    H = await mlib.xor(H, snap);
+                }
             }
-            let H2 = await mlib.GetSnap(accounts[CurrentNumber + 1].address, balances[CurrentNumber + 1])
-            for (let i = CurrentNumber + 2; i < accounts.length; i++) {
-                snap = await mlib.GetSnap(accounts[i].address, balances[i])
-                H2 = await mlib.xor(H2, snap)
-            }
-            return await mlib.xor(H1, H2);
+            return H;
         }
 
         async function GetProofPlayerDouble(prevnumber, curnumber) {
@@ -174,7 +158,6 @@ describe.only("Snapshot players", async () => {
             }
             return H;
         }
-
 
         async function IterLot(lotAddr, creatorNumber, ownerNumber, timeF, timeS, value, initPrice) {
             let H;

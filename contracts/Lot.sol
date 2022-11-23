@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity  ^0.7.0 || ^0.8.0;
 
-import "./interfaces/IExchangeTest.sol";
-
 import "./libraries/Proof.sol";
 import "./libraries/Params.sol";
 
@@ -76,7 +74,6 @@ contract Lot {
         );
         state = uint256(keccak256(abi.encode("empty")));
         emit NewLot(timeFirst, timeSecond, owner, price, value, snapshot);
-        console.log("New lot: ", owner, price);
     }
 
 
@@ -103,7 +100,6 @@ contract Lot {
             )
         );
         emit BuyLot(sender, newPrice, snapshot);
-        console.log("Buy lot: ", sender, newPrice);
     }
 
 

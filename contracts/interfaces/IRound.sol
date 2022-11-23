@@ -33,7 +33,7 @@ interface IRound {
     function SendLot(
         address _lotAddr,
         Params.InitParams memory initParams
-    ) external;
+    ) external returns(uint amountOut);
 
     function ReceiveLot(
         address _lotAddr,
@@ -63,4 +63,12 @@ interface IRound {
     ) external view returns(bool);
 
     function GetParamsSnapshot() external view returns(uint);
+
+    function GetDeposit() external view returns(uint, uint);
+
+    function Swap1(uint amountIn) external;
+
+    function Swap2(uint amountIn) external;
+
+    function GetReceiveToken(address _lotAddr) external view returns(uint);
 }

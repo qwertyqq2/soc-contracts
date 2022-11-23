@@ -2,9 +2,9 @@
 pragma solidity  ^0.7.0 || ^0.8.0;
 
 import "./interfaces/IGroup.sol";
-import "./interfaces/IExchangeTest.sol";
 import "./interfaces/ILot.sol";
 import "./interfaces/IRound.sol";
+import "./UniswapRouter/interfaces/IUniswapRouter.sol";
 
 
 import "./libraries/Proof.sol";
@@ -13,8 +13,9 @@ import "./libraries/JumpSnap.sol";
 import "./libraries/Params.sol";
 
 
-import "./ExchangeTest.sol";
 import "./Lot.sol";
+import "./UniswapRouter/UniswapRouter.sol";
+
 
 import "hardhat/console.sol";
 
@@ -26,10 +27,10 @@ contract Round {
     address groupAddress;
     mapping(address => uint256) pendingPlayers;
     address[] pendingAddress;
-    address exchangeAddress;
     uint256 deposit;
 
     address lotAddr;
+    address routerAddr;
 
     uint256 balancesSnap = 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     uint256 paramsSnap = 115792089237316195423570985008687907853269984665640564039457584007913129639935;
@@ -41,8 +42,6 @@ contract Round {
         groupAddress = msg.sender;
         deposit = _deposit;
         addr = address(this);
-        ExchangeTest exc = new ExchangeTest();
-        exchangeAddress = address(exc);
     }
 
     event SendLotEvent(
@@ -102,9 +101,17 @@ contract Round {
             uint psnap = Params.GetSnapParamPlayerOut(pendingAddress[i], 0, 0, 0, 0);
             paramsSnap = Math.xor(psnap, paramsSnap);
         }
+    
+        UniV3Router uni = new UniV3Router();
+        uni.Deposit{value: address(this).balance}();
+        routerAddr = address(uni);
+        
+
         balancesSnap = uint256(keccak256(abi.encode(balancesSnap)));
         paramsSnap = uint256(keccak256(abi.encode(paramsSnap)));
         timeCreation = block.timestamp;
+
+
     }
 
     function CreateLot() external onlyGroup returns(address){
@@ -156,17 +163,13 @@ contract Round {
     function SendLot(
         address _lotAddr,
         Params.InitParams memory initParams
-    ) public onlyGroup{
-        IExchangeTest exc = IExchangeTest(exchangeAddress);
+    ) public onlyGroup returns(uint amountOut){
         ILot lot = ILot(_lotAddr);
         lot.End(initParams);
-
-        lot.SetInitBalance(address(this).balance);
-        uint initBal = exc.GetTokenBalance();
-        exc.EthToToken{value: initParams.value}();
-        lot.SetReceiveTokens(exc.GetTokenBalance() - initBal);
-        
-        console.log("Lot sent ");
+        IUniV3Router router = IUniV3Router(routerAddr);
+        lot.SetInitBalance(router.getBalanceEth());
+        amountOut = router.swapWETHToDAI(initParams.value);
+        lot.SetReceiveTokens(amountOut);        
     }
 
     function GetSnapParamPlayer( 
@@ -178,20 +181,6 @@ contract Round {
         ) public pure returns(uint){
             return uint(keccak256(abi.encodePacked(_owner,  _nwin, _n, _spos, _sneg)));
         }
-
-    // function updatePlus(
-    //     Params.PlayerParams calldata _params,
-    //     uint _Spos,
-    //     uint _delta,
-    //     uint _price
-    //     ) private view returns(uint, uint){
-    //         uint s_ = (_params.spos + _delta)*100/_Spos;
-    //         uint d_ = (1000000 - (_params.balance + _price))*s_/100;
-    //         uint curbalance = _params.balance + _price + d_;
-    //         console.log("newBalance: ", curbalance);
-    //         return (GetSnapParamPlayer(_params.owner, curbalance, _params.nwin +1, 
-    //             _params.n +1, _params.spos + _delta, _params.sneg), curbalance);
-    //     }
 
 
         function updatePlus(
@@ -239,15 +228,15 @@ contract Round {
         Proof.ProofRes calldata _proof,
         Params.PlayerParams calldata _params
     )  public onlyGroup correctParams(_params) returns(uint newBalance, bytes memory dataParams){
-        IExchangeTest exc = IExchangeTest(exchangeAddress);
+        IUniV3Router router = IUniV3Router(routerAddr);
         ILot lot = ILot(_lotAddr);
         lot.Close(_init, _proof);
-        uint initBal = address(this).balance;
-        exc.TokenToEth(exc.GetTokenBalance());
-        int res = int(address(this).balance) - int(initBal) - int(_init.value);
+        uint receiveTokens = lot.GetReceiveTokens();
+        router.swapDAItoWETH(receiveTokens);
+
+        int res = int(router.getBalanceEth()) - int(_init.value);
 
         uint snapParams;
-        res = int(10);
 
         if(res>=0){            
             (snapParams, newBalance, dataParams) = updatePlus(
@@ -320,10 +309,6 @@ contract Round {
         return 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     }
 
-    function GetExchange() public view returns(address){
-        return exchangeAddress;
-    }
-
     function VerifyProofRes(
         Proof.ProofRes calldata proof
     ) external view returns(bool){
@@ -341,5 +326,25 @@ contract Round {
 
     function GetParamsSnapshot() external view returns(uint){
         return paramsSnap;
+    }
+
+    function GetDeposit() external view returns(uint, uint){
+        IUniV3Router router = IUniV3Router(routerAddr);
+        return (router.getBalanceEth(), router.getBalanceDAI());
+    }
+
+    function Swap1(uint amountIn) external{
+        IUniV3Router router = IUniV3Router(routerAddr);
+        router.swapWETHToDAI(amountIn);
+    }
+
+    function Swap2(uint amountIn) external{
+        IUniV3Router router = IUniV3Router(routerAddr);
+        router.swapDAItoWETH(amountIn);
+    }
+
+    function GetReceiveToken(address _lotAddr) external view returns(uint){
+        ILot lot = ILot(_lotAddr);
+        return lot.GetReceiveTokens();
     }
 }

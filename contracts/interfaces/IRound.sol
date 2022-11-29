@@ -8,23 +8,21 @@ import "../libraries/Params.sol";
 interface IRound {
     function Enter(address _sender, uint256 _value) external;
 
-    function StartRound() external;
+    function StartRound() external returns(uint, uint);
 
     function CreateLot() external returns(address);
 
     function NewLot(
         address _lotAddr,
-        uint256 _timeFirst,
-        uint256 _timeSecond,
-        uint256 _val,
+        Params.InitParams memory initParams,
         Proof.ProofRes memory proof
-    ) external;
+    ) external returns(uint, uint);
 
     function BuyLot(
         address _lotAddr,
         Proof.ProofRes memory proof,
         Proof.ProofEnoungPrice memory proofEP 
-    ) external;
+    ) external returns(uint, uint);
 
 
     function GetPlayer(address player) external view returns (uint256);
@@ -35,14 +33,18 @@ interface IRound {
         Params.InitParams memory initParams
     ) external returns(uint amountOut);
 
+
     function ReceiveLot(
         address _lotAddr,
         Params.InitParams calldata _init,
         Proof.ProofRes calldata _proof,
         Params.PlayerParams calldata _params
-    ) external returns(uint, bytes memory);
+    ) external returns(bytes memory, uint);
 
-
+    function Withdraw(
+        Params.PlayerParams calldata _params,
+        Proof.ProofRes calldata _proof
+        ) external returns(uint, uint);
 
     function GetSnap() external view returns (uint256);
 
@@ -52,23 +54,10 @@ interface IRound {
 
     function GetInitSnap() external view returns(uint256);
 
-    function GetExchange() external view returns(address);
+    function GetParamsSnap() external view returns(uint);
 
-    function VerifyProofRes(
-        Proof.ProofRes calldata proof
-    ) external view returns(bool);
+    function GetBalancesSnap() external view returns(uint);
 
-    function VerifyParamsPlayer(
-        Params.PlayerParams calldata _params
-    ) external view returns(bool);
 
-    function GetParamsSnapshot() external view returns(uint);
 
-    function GetDeposit() external view returns(uint, uint);
-
-    function Swap1(uint amountIn) external;
-
-    function Swap2(uint amountIn) external;
-
-    function GetReceiveToken(address _lotAddr) external view returns(uint);
 }

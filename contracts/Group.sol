@@ -7,39 +7,74 @@ import "./interfaces/IRound.sol";
 import "./libraries/Proof.sol";
 import "./libraries/JumpSnap.sol";
 
-import "hardhat/console.sol";
-
 contract Group {
+    event CreateRoundEvent(address _roundAddress, uint256 _deposit);
 
-    event LotCreated(
-        address _lotAddr
+    event EnterRoundEvent(address _roundAddress, address _sender);
+
+    event StartRoundEvent(address _roundAddress, uint _bsnap, uint _psnap);
+
+    event CreatedLotEvent(address _roundAddress, address _lotAddr);
+
+    event NewLotEvent(
+         address _roundAddress,
+         address _lotAddr,
+         address _owner,
+         uint256 _timeFirst,
+         uint256 _timeSecond,
+         uint256 _price,
+         uint256 _val,
+         uint256 _lotSnap,
+         uint256 _bsnap
+     );
+
+
+    event BuyLotEvent(
+        address _roundAddress,
+        address _lotAddr,
+        address _sender,
+        uint256 _price,
+        uint256 _lotSnap,
+        uint256 _bsnap
     );
 
-    event NewBalance(
-        address _owner,
-        uint _newBalance
+    event SendLotEvent(
+        address _roundAddress,
+        address _lotAddr,
+        uint256 _receiveTokens
     );
 
     event UpdatePlayerParams(
+        address _roundAddress,
         address _owner,
-        uint _nwin, 
-        uint _n,
-        uint _spos, 
-        uint _sneg
+        uint256 _nwin, 
+        uint256 _n,
+        uint256 _spos, 
+        uint256 _sneg
     );
 
-    event SendLotOut(uint _amountOut);
+
+    event ReceiveLotEvent(
+        address _roundAddress,
+        address _lotAddr,
+        address _owner,
+        uint _balance,
+        uint _psnap,
+        uint _bsnap
+    );
+
+    event WithdrawEvent(
+        address _sender,
+        uint _psnap,
+        uint _bsnap
+    );
+
 
     address owner;
     address roundAddr;
-    address exchangeAddress;
 
     constructor() {
         owner = msg.sender;
-    }
-
-    function GetOwner() public view returns (address) {
-        return owner;
     }
 
     modifier onlyOwner() {
@@ -50,24 +85,28 @@ contract Group {
     function CreateRound(uint256 _deposit) public onlyOwner{
         Round round = new Round(_deposit);
         roundAddr = address(round);
+        emit CreateRoundEvent(address(round), _deposit);
     }
 
     function Enter() public payable {
         IRound round = IRound(roundAddr);
         round.Enter(msg.sender, msg.value);
         payable(roundAddr).transfer(msg.value);
+        emit EnterRoundEvent(roundAddr, msg.sender);
     }
 
     function StartRound() public {
         IRound round = IRound(roundAddr);
-        round.StartRound();
+        uint bsnap;
+        uint psnap;
+        (bsnap, psnap) = round.StartRound();
+        emit StartRoundEvent(roundAddr, bsnap, psnap);
     }
 
     function CreateLot() external{
         IRound round = IRound(roundAddr);
         address lotAddr = round.CreateLot();
-        emit LotCreated(lotAddr);
-        console.log("Create Lot: ", lotAddr);
+        emit CreatedLotEvent(roundAddr, lotAddr);
     }
 
     modifier onlyPlayer() {
@@ -78,36 +117,51 @@ contract Group {
 
     function NewLot(
         address _lotAddr,
-        uint256 _timeFirst,
-        uint256 _timeSecond,
-        uint256 _price,
-        uint256 _val,
-        uint _Hres,
-        uint _balance
+        bytes memory initParamsData,
+        bytes memory proofResData
     ) external {
-        Proof.ProofRes memory proof = Proof.NewProof(msg.sender, _price, _Hres, _balance);
+        Proof.ProofRes memory proof = Proof.DecodeProofResNewLot(proofResData);
+        proof.owner = msg.sender;
+        Params.InitParams memory initParams = Params.DecodeInitParams(initParamsData);
         IRound round = IRound(roundAddr);
-        round.NewLot(_lotAddr, _timeFirst, _timeSecond, _val, proof);
+        uint lotSnap;
+        uint balancesSnap;
+        (lotSnap, balancesSnap) = round.NewLot(_lotAddr, initParams, proof);
+         emit NewLotEvent(
+             roundAddr,
+             _lotAddr,
+             msg.sender,
+             initParams.timeFirst,
+             initParams.timeSecond,
+             proof.price,
+             initParams.value,
+             lotSnap,
+             balancesSnap
+     );
+     console.log("New lot!");
     }
 
     function BuyLot(
         address _lotAddr,
-        uint256 _price,
-        uint _Hres,
-        uint _Hd,
-        uint256 _balance,
-        uint256 _prevBalance,
-        address _prevOwner,
-        uint256 _prevPrice,
-        uint256 _prevSnap
+        bytes memory proofResData,
+        bytes memory proofEPData 
         ) external {
-        Proof.ProofRes memory proofRes = Proof.NewProof(msg.sender, _price, _Hres, _balance);
-        proofRes.prevOwner = _prevOwner;
-        proofRes.prevBalance = _prevBalance;
-        proofRes.Hd = _Hd;
-        Proof.ProofEnoungPrice memory proofEP = Proof.NewProofEnoughPrice(_prevOwner, _prevPrice, _prevSnap);
+        Proof.ProofRes memory proofRes = Proof.DecodeProofResBuyLot(proofResData);
+        proofRes.owner = msg.sender;
+        Proof.ProofEnoungPrice memory proofEP = Proof.DecodeProofEP(proofEPData);
         IRound round = IRound(roundAddr);
-        round.BuyLot(_lotAddr, proofRes, proofEP);
+        uint lotSnap;
+        uint balancesSnap;
+        (lotSnap, balancesSnap) = round.BuyLot(_lotAddr, proofRes, proofEP);
+        emit BuyLotEvent(
+            roundAddr,
+            _lotAddr,
+            msg.sender,
+            proofRes.price,
+            lotSnap,
+            balancesSnap
+        );
+        console.log("Buy lot!");
     }
 
 
@@ -118,7 +172,8 @@ contract Group {
         Params.InitParams memory initParams = Params.DecodeInitParams(initParamsData);
         IRound round = IRound(roundAddr);
         uint amountOut = round.SendLot(_lotAddr, initParams);
-        emit SendLotOut(amountOut);
+        emit SendLotEvent(roundAddr, _lotAddr, amountOut);
+        console.log("Send lot!");
     }
 
     function ReceiveLot(
@@ -127,85 +182,56 @@ contract Group {
         bytes memory initParamsData,
         bytes memory proofResData,
         bytes memory playerParamsData
-    ) external returns (uint newBalance){
+    ) external{
         Params.InitParams memory initParams = Params.DecodeInitParams(initParamsData);
         Proof.ProofRes memory proof = Proof.DecodeProofRes(proofResData);
         proof.owner = _owner;
         Params.PlayerParams memory params = Params.DecodePlayerParams(playerParamsData);
         IRound round = IRound(roundAddr);
         bytes memory newParamsData;
-        (newBalance, newParamsData) = round.ReceiveLot(_lotAddr, initParams, proof, params);
+        uint newBalance;
+        (newParamsData, newBalance) = round.ReceiveLot(_lotAddr, initParams, proof, params);
         Params.PlayerParams memory NewParams = Params.DecodePlayerParamsInTuple(newParamsData);
         emit UpdatePlayerParams(
+            roundAddr, 
             NewParams.owner, 
             NewParams.nwin,
             NewParams.n,
             NewParams.spos,
             NewParams.sneg);
-        emit NewBalance(_owner, newBalance);
+        uint bsnap = round.GetBalancesSnap();
+        uint psnap = round.GetParamsSnap();
+        emit ReceiveLotEvent(
+            roundAddr,
+            _lotAddr,
+            _owner,
+            newBalance,
+            psnap,
+            bsnap
+        );
+        console.log("Receive lot!");
     }
 
 
-    function GetSnap() public view returns (uint256) {
-        IRound round = IRound(roundAddr);
-        return round.GetSnap();
-    }
-
-    function GetRound() public view returns(address){
-        return roundAddr;
-    }
-
-    function GetSnapRound() public view returns(uint256){
-        IRound round = IRound(roundAddr);
-        return round.GetSnapshot();
-    }
-
-    function GetInitSnapRound() public view returns(uint256){
-        IRound round = IRound(roundAddr);
-        return round.GetInitSnap();
-    }
-
-    function VerifyProofRes(
-        address _addr,
-        uint _H,
-        uint _balance
-    ) public view returns(bool){
-        Proof.ProofRes memory proofRes = Proof.NewProof(_addr, 0, _H, _balance);
-        IRound round = IRound(roundAddr);
-        return round.VerifyProofRes(proofRes);
-    }
-
-    function VerifyParamsPlayer(
+    function Withdraw(
+        bytes memory proofResData,
         bytes memory playerParamsData
-    ) external view returns(bool){
+    ) external {
+        Proof.ProofRes memory proof = Proof.DecodeProofRes(proofResData);
+        proof.owner = msg.sender;
         Params.PlayerParams memory params = Params.DecodePlayerParams(playerParamsData);
         IRound round = IRound(roundAddr);
-        return round.VerifyParamsPlayer(params);
+        (uint psnap, uint bsnap) = round.Withdraw(params, proof);
+        emit WithdrawEvent(msg.sender, psnap, bsnap);
     }
 
-    function GetParamsSnapshot() external view returns(uint){
-        IRound round = IRound(roundAddr);
-        return round.GetParamsSnapshot();
-    }
 
-    function GetDepositRound() external view returns(uint, uint){
-        IRound round = IRound(roundAddr);
-        return round.GetDeposit();
+    function EncodeEP(address _prevOwner, uint _prevPrice, uint _prevSnap) external view{
+        bytes memory data = Proof.EncodeProofEnoungPrice(_prevOwner, _prevPrice, _prevSnap);
+        console.logBytes(data);
+        Proof.ProofEnoungPrice memory proofEP = Proof.DecodeProofEP(data);
+        console.log(proofEP.prevOwner);
+        console.log(proofEP.prevPrice);
+        console.log(proofEP.prevSnap);
     }
-
-    function SwapEthToDai(uint amountIn) external{
-        IRound round = IRound(roundAddr);
-        round.Swap1(amountIn);
-    }
-
-    function SwapDaiToEth(uint amountIn) external{
-        IRound round = IRound(roundAddr);
-        round.Swap2(amountIn);
-    }
-
-    function GetReceiveRoken(address _lotAddr) external view returns(uint){
-        IRound round = IRound(roundAddr);
-        return round.GetReceiveToken(_lotAddr);
-    }
-
 }  

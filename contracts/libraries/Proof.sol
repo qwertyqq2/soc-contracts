@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity  ^0.7.0 || ^0.8.0;
 
-import "hardhat/console.sol";
-
 library Proof {
     struct ProofRes{
                 address owner;
@@ -38,6 +36,56 @@ library Proof {
     ) external pure returns(bytes memory data){
         data = abi.encode(_balance ,_price, _Hres, _prevSnap);
     }
+
+    function EncodeProofRes(
+        uint _balance,
+        uint256 _price,
+        uint _Hres,
+        uint _Hd,
+        uint _prevSnap,
+        address _prevOwner,
+        uint _prevBalance
+    ) external pure returns(bytes memory data){
+        data = abi.encode(_balance ,_price, _Hres, _Hd, _prevSnap, _prevOwner, _prevBalance);
+    }
+
+    function EncodeProofRes(
+        uint _balance,
+        uint256 _price,
+        uint256 _Hres
+    ) external pure returns(bytes memory data){
+        data = abi.encode(_balance ,_price, _Hres);
+    }
+
+    function EncodeProofRes(
+        uint256 _balance,
+        uint256 _price,
+        uint _Hres,
+        uint _Hd,
+        uint256 _prevBalance
+    ) external pure returns(bytes memory data){
+        data = abi.encode(_balance ,_price, _Hres, _Hd, _prevBalance);
+    }
+
+
+        // uint _balance,
+        // uint256 _price,
+        // uint _Hres,
+        // uint _Hd,
+        // uint _prevSnap,
+        // address _prevOwner,
+        // uint _prevBalance
+    function DecodeProofResBuyLot(bytes memory data)
+        external pure returns(ProofRes memory proof){
+            (proof.balance, proof.price, proof.Hres, proof.Hd, proof.prevOwner, proof.prevBalance) = 
+                abi.decode(data, (uint, uint, uint, uint,  address, uint));
+        }
+
+    function DecodeProofResNewLot(bytes memory data)
+        external pure returns(ProofRes memory proof){
+            ( proof.balance, proof.price, proof.Hres) = 
+                abi.decode(data, (uint, uint, uint));
+        }
 
     function DecodeProofRes(bytes memory data)
         external pure returns(ProofRes memory proof){
@@ -86,6 +134,22 @@ library Proof {
         proof.prevSnap = _prevSnap;
         return proof;
     }
+
+    function EncodeProofEnoungPrice(
+        address _prevOwner,
+        uint _prevPrice,
+        uint _prevSnap
+    ) external pure returns(bytes memory data){
+        data = abi.encode(_prevOwner ,_prevPrice, _prevSnap);
+    }
+
+
+    function DecodeProofEP(bytes memory data)
+            external pure returns(ProofEnoungPrice memory proofEP){
+                ( proofEP.prevOwner, proofEP.prevPrice, proofEP.prevSnap) = 
+                    abi.decode(data, (address, uint, uint));
+            }
+
 
     function GetProofEnoughPrice(ProofEnoungPrice calldata proof) 
         external pure returns(uint256){

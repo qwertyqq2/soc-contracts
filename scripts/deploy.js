@@ -1,5 +1,5 @@
-const hre = require("hardhat");
 async function main() {
+
   const mathLib = await ethers.getContractFactory("Math");
   const mlib = await mathLib.deploy();
   await mlib.deployed();
@@ -34,6 +34,24 @@ async function main() {
   group = await Group.deploy()
 
   console.log("Group created, address:", group.address);
+
+  const accounts = await ethers.getSigners();
+
+  const deposit = 3000
+
+  let createRound = await group.CreateRound(deposit);
+  await createRound.wait();
+  console.log("round created");
+
+  for (let i = 0; i < accounts.length; i++) {
+    let enter = await group.connect(accounts[i]).Enter({ value: deposit });
+    await enter.wait();
+    console.log("enter");
+  }
+
+  let startRound = await group.StartRound();
+  await startRound.wait();
+  console.log("round started");
 }
 
 

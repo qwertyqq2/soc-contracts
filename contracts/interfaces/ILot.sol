@@ -22,13 +22,13 @@ interface ILot {
         address owner,
         uint256 price,
         uint256 value
-    ) external;
+    ) external returns(uint);
 
     function Buy(
         address sender, 
         uint256 newPrice,
         Proof.ProofEnoungPrice memory proof
-        ) external;
+        ) external returns(uint);
 
     function End(
         Params.InitParams calldata init

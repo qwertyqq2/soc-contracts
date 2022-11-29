@@ -1,112 +1,73 @@
 const { expect } = require("chai");
 const deposit = BigInt("10000")
-
-
-
-beforeEach(async function () {
-    const mathLib = await ethers.getContractFactory("Math");
-    const mlib = await mathLib.deploy();
-    await mlib.deployed();
-
-    const proofLib = await ethers.getContractFactory("Proof");
-    const plib = await proofLib.deploy();
-    await plib.deployed();
-
-    const paramsLib = await ethers.getContractFactory("Params");
-    const paramslib = await paramsLib.deploy();
-    await paramslib.deployed();
-
-
-    const jumpLib = await ethers.getContractFactory("JumpSnap");
-    const jumplib = await jumpLib.deploy();
-    await jumplib.deployed();
-
-    Group = await ethers.getContractFactory("Group", {
-        libraries: {
-            Math: mlib.address,
-            Proof: plib.address,
-            Params: paramslib.address,
-            JumpSnap: jumplib.address
-        },
-    });
-
-    group = await Group.deploy()
-    await group.CreateRound(deposit)
-    const accounts = await ethers.getSigners();
-
-    for (let i = 0; i < accounts.length; i++) {
-        await group.connect(accounts[i]).Enter({ value: deposit })
-    }
-    await group.StartRound()
-})
-
-
-
+const Web3 = require('web3');
+const web3 = new Web3;
 
 
 describe.only("Snapshot players", async () => {
-    it("Init", async () => {
-        const mathLib = await ethers.getContractFactory("Math");
-        const mlib = await mathLib.deploy();
-        await mlib.deployed();
-
-        const accounts = await ethers.getSigners();
-
-        const N = 10;
-        const myAddr = accounts[N].address
-        let myBalance = deposit
-        const hash = await mlib.GetSnap(myAddr, myBalance)
-
-
-        let H1 = await group.GetInitSnapRound()
-
-        for (let i = 0; i < N; i++) {
-            snap = await mlib.GetSnap(accounts[i].address, deposit)
-            H1 = await mlib.xor(H1, snap)
-        }
-
-        let H2 = await mlib.GetSnap(accounts[N + 1].address, deposit)
-        for (let i = N + 2; i < accounts.length; i++) {
-            snap = await mlib.GetSnap(accounts[i].address, deposit)
-            H2 = await mlib.xor(H2, snap)
-        }
-
-        const part = await mlib.xor(H1, hash)
-        const res = await mlib.xor(part, H2)
-        const myValue = await mlib.KeccakOne(res)
-        const snapshot = await group.GetSnapRound()
-
-        expect(myValue).to.equal(snapshot)
-
-    })
-
     it.only("send successfully", async () => {
         const mathLib = await ethers.getContractFactory("Math");
         const mlib = await mathLib.deploy();
         await mlib.deployed();
+
+        const proofLib = await ethers.getContractFactory("Proof");
+        const plib = await proofLib.deploy();
+        await plib.deployed();
+
 
         const paramsLib = await ethers.getContractFactory("Params");
         const paramslib = await paramsLib.deploy();
         await paramslib.deployed();
 
 
-        const proofLib = await ethers.getContractFactory("Proof");
-        const plib = await proofLib.deploy();
-        await plib.deployed();
+        const jumpLib = await ethers.getContractFactory("JumpSnap");
+        const jumplib = await jumpLib.deploy();
+        await jumplib.deployed();
+
+
+        const Group = await ethers.getContractFactory("Group", {
+            libraries: {
+                Math: mlib.address,
+                Proof: plib.address,
+                Params: paramslib.address,
+                JumpSnap: jumplib.address
+            },
+        });
+
+        group = await Group.deploy();
+        console.log(group.address);
+
+
+
+        const createRoundTx = await group.CreateRound(1000);
+        const createRound = await createRoundTx.wait()
+
+        const deposit = createRound.events[0].args._deposit;
+        const roundAddr = createRound.events[0].args._roundAddress;
+
+
+        console.log("round created", roundAddr)
 
         const accounts = await ethers.getSigners();
 
+        const pendingPlayers = []
 
-        //Data user//
+        for (let i = 0; i < accounts.length; i++) {
+            const pending = await (await group.connect(accounts[i]).Enter({ value: deposit })).wait()
+            pendingPlayers.push({
+                sender: pending.events[0].args._sender
+            })
+        }
+
+        await (await group.StartRound()).wait()
+
 
         let balances = []
-        let addresses = []
         let params = []
 
 
         for (let i = 0; i < accounts.length; i++) {
             balances.push(BigInt(deposit))
-            addresses.push(accounts[i].address)
             params.push(
                 {
                     owner: accounts[i].address,
@@ -119,7 +80,7 @@ describe.only("Snapshot players", async () => {
         }
 
         async function GetProofParams(CurrentNumber) {
-            let H = await group.GetInitSnapRound();
+            let H = ethers.BigNumber.from("115792089237316195423570985008687907853269984665640564039457584007913129639935");
             let snap;
             for (let i = 0; i < accounts.length; i++) {
                 if (i != CurrentNumber) {
@@ -137,11 +98,10 @@ describe.only("Snapshot players", async () => {
         }
 
         async function GetProofPlayer(CurrentNumber) {
-            let H = await group.GetInitSnapRound();
-            let snap;
+            let H = ethers.BigNumber.from("115792089237316195423570985008687907853269984665640564039457584007913129639935");
             for (let i = 0; i < accounts.length; i++) {
                 if (i != CurrentNumber) {
-                    snap = await mlib.GetSnap(addresses[i], balances[i]);
+                    const snap = await mlib.GetSnap(accounts[i].address, balances[i]);
                     H = await mlib.xor(H, snap);
                 }
             }
@@ -149,25 +109,37 @@ describe.only("Snapshot players", async () => {
         }
 
         async function GetProofPlayerDouble(prevnumber, curnumber) {
-            let H = await group.GetInitSnapRound();
+            let H = ethers.BigNumber.from("115792089237316195423570985008687907853269984665640564039457584007913129639935");
             for (let i = 0; i < accounts.length; i++) {
                 if (i != prevnumber && i != curnumber) {
-                    snap = await mlib.GetSnap(addresses[i], balances[i]);
+                    const snap = await mlib.GetSnap(accounts[i].address, balances[i]);
                     H = await mlib.xor(H, snap);
                 }
             }
             return H;
         }
 
-        async function IterLot(lotAddr, creatorNumber, ownerNumber, timeF, timeS, value, initPrice) {
-            let H;
-            H = await GetProofPlayer(creatorNumber);
-            await group.connect(accounts[creatorNumber]).NewLot(lotAddr, timeF, timeS,
-                initPrice, value, H, balances[creatorNumber]);
-            balances[creatorNumber] -= BigInt(Number(initPrice));
+        async function IterLot(creatorNumber, ownerNumber, timeF, timeS, value, initPrice) {
+            const lotTx = await (await group.CreateLot()).wait();
+            const lotAddr = lotTx.events[0].args._lotAddr;
+            console.log("lot created", lotAddr);
+            let Hres = await GetProofPlayer(creatorNumber);
+
+            let dataProofRes = web3.eth.abi.encodeParameters(
+                ['uint256', 'uint256', 'uint256'],
+                [balances[creatorNumber], initPrice, Hres]
+            );
+
+            let dataInit = web3.eth.abi.encodeParameters(
+                ['uint256', 'uint256', 'uint256'],
+                [timeF, timeS, value]
+            );
+
+            await (await group.connect(accounts[creatorNumber]).NewLot(lotAddr, dataInit, dataProofRes)).wait();
+
+            balances[creatorNumber] -= BigInt(initPrice);
 
             let snapshot = await mlib.GetNewBuySnapshot(accounts[creatorNumber].address, initPrice, 0);
-
 
             let owner = accounts[creatorNumber].address;
             let balance = balances[creatorNumber];
@@ -179,33 +151,32 @@ describe.only("Snapshot players", async () => {
             let prevNumber = creatorNumber;
 
 
-            Hp = await GetProofParams(ownerNumber);
-
-            let dataParams = await paramslib.EncodePlayerParams(
-                params[ownerNumber].owner,
-                params[ownerNumber].nwin,
-                params[ownerNumber].n,
-                params[ownerNumber].spos,
-                params[ownerNumber].sneg,
-                Hp
-            );
-
-            let flag = await group.VerifyParamsPlayer(dataParams);
-            console.log(flag);
-
-
             for (let i = 1; i <= ownerNumber; i++) {
                 Hres = await GetProofPlayer(i);
                 Hd = await GetProofPlayerDouble(prevNumber, i);
 
                 price = initPrice + i;
-                owner = addresses[i];
+                owner = accounts[i].address;
                 balance = balances[i];
 
+                // uint _balance,
+                // uint256 _price,
+                // uint _Hres,
+                // uint _Hd,
+                // uint _prevSnap,
+                // address _prevOwner,
+                // uint _prevBalance
+                let dataProofRes = web3.eth.abi.encodeParameters(
+                    ['uint256', 'uint256', 'uint256', 'uint256', 'address', 'uint256'],
+                    [balance, price, Hres, Hd, prevOwner, prevBalance]
+                );
 
-                await group.connect(accounts[i]).BuyLot
-                    (lotAddr, price, Hres, Hd, balance,
-                        prevBalance, prevOwner, prevPrice, prevSnapshot);
+                let dataProofEP = web3.eth.abi.encodeParameters(
+                    ['address', 'uint256', 'uint256'],
+                    [prevOwner, prevPrice, prevSnapshot]
+                );
+
+                await (await group.connect(accounts[i]).BuyLot(lotAddr, dataProofRes, dataProofEP)).wait();
 
                 balances[i] -= BigInt(price);
                 balances[prevNumber] += BigInt(price);
@@ -219,43 +190,43 @@ describe.only("Snapshot players", async () => {
 
             ///Encode send///
 
-            let dataInit = await paramslib.EncodeInitParams(timeF, timeS, value);
-
             await group.connect(accounts[0]).SendLot(lotAddr, dataInit);
 
             Hres = await GetProofPlayer(ownerNumber);
             Hp = await GetProofParams(ownerNumber);
 
 
-            const dataProof = await plib.EncodeProofRes(balances[ownerNumber], price, Hres, prevSnapshot);
+            dataProofRes = web3.eth.abi.encodeParameters(
+                ['uint256', 'uint256', 'uint256', 'uint256'],
+                [balances[ownerNumber], price, Hres, prevSnapshot]
+            );
 
 
             Hp = await GetProofParams(ownerNumber);
 
-            dataParams = await paramslib.EncodePlayerParams(
-                params[ownerNumber].owner,
+            dataParams = web3.eth.abi.encodeParameters(
+                ['address', 'uint', 'uint', 'uint', 'uint', 'uint'],
+                [params[ownerNumber].owner,
                 params[ownerNumber].nwin,
                 params[ownerNumber].n,
                 params[ownerNumber].spos,
                 params[ownerNumber].sneg,
-                Hp
+                    Hp]
             );
 
-            flag = await group.VerifyParamsPlayer(dataParams);
-            console.log(flag);
 
 
             const receiveTx = await group.connect(accounts[0]).ReceiveLot(
                 lotAddr,
-                addresses[ownerNumber],
+                accounts[ownerNumber].address,
                 dataInit,
-                dataProof,
+                dataProofRes,
                 dataParams
             );
 
             const result = await receiveTx.wait();
 
-            const newBalance = BigInt(Number(result.events[1].args._newBalance));
+            const newBalance = BigInt(Number(result.events[1].args._balance));
             const newParam = result.events[0].args;
             balances[ownerNumber] = newBalance;
             params[ownerNumber].nwin = newParam._nwin;
@@ -278,7 +249,7 @@ describe.only("Snapshot players", async () => {
         let creatorNumber = 14;
         let ownerNumber = 12;
 
-        await IterLot(lotAddr1, creatorNumber, ownerNumber, timeF, timeS, value, initPrice);
+        await IterLot(creatorNumber, ownerNumber, timeF, timeS, value, initPrice);
 
         timeF = Date.now() + 120;
         timeS = timeF + 100;
@@ -289,7 +260,7 @@ describe.only("Snapshot players", async () => {
         creatorNumber = 9;
         ownerNumber = 7;
 
-        await IterLot(lotAddr1, creatorNumber, ownerNumber, timeF, timeS, value, initPrice);
+        await IterLot(creatorNumber, ownerNumber, timeF, timeS, value, initPrice);
 
         timeF = Date.now() + 120;
         timeS = timeF + 100;
@@ -300,8 +271,9 @@ describe.only("Snapshot players", async () => {
         creatorNumber = 15;
         ownerNumber = 10;
 
-        await IterLot(lotAddr1, creatorNumber, ownerNumber, timeF, timeS, value, initPrice); timeF = Date.now() + 120;
+        await IterLot(creatorNumber, ownerNumber, timeF, timeS, value, initPrice);
 
+        timeF = Date.now() + 120;
         timeS = timeF + 100;
         value = 200;
         initPrice = 300;
@@ -310,9 +282,8 @@ describe.only("Snapshot players", async () => {
         creatorNumber = 13;
         ownerNumber = 14;
 
-        await IterLot(lotAddr1, creatorNumber, ownerNumber, timeF, timeS, value, initPrice);
+        await IterLot(creatorNumber, ownerNumber, timeF, timeS, value, initPrice);
 
-
-        console.log(balances);
+        console.log(balances)
     })
 })

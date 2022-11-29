@@ -20,20 +20,6 @@ contract Lot {
     uint receiveToken;
     uint initBalance;
     
-    event NewLot(
-        uint256 timeFirst,
-        uint256 timeSecond,
-        address owner,
-        uint256 price,
-        uint256 value,
-        uint256 hash
-    );
-
-    event BuyLot(address owner, uint256 price, uint256 hash);
-
-    event JoinLot(address sender, uint256 price, uint256 hash);
-
-    event FinalLot(address owner, uint256 value);
 
 
     constructor(){
@@ -52,7 +38,7 @@ contract Lot {
         address owner,
         uint256 price,
         uint256 value
-    ) external onlyRound {
+    ) external onlyRound returns(uint){
         require(state == uint256(keccak256(abi.encode("closed"))), "Not new");
         snapshot = uint256(
             keccak256(
@@ -73,7 +59,7 @@ contract Lot {
             )
         );
         state = uint256(keccak256(abi.encode("empty")));
-        emit NewLot(timeFirst, timeSecond, owner, price, value, snapshot);
+        return snapshot;
     }
 
 
@@ -88,7 +74,7 @@ contract Lot {
         address sender, 
         uint256 newPrice,
         Proof.ProofEnoungPrice calldata proof
-        ) external onlyRound correctPrice(proof, newPrice){
+        ) external onlyRound correctPrice(proof, newPrice) returns(uint){
         require(state == uint256(keccak256(abi.encode("empty"))), "not empty");
         snapshot = uint256(
             keccak256(
@@ -99,7 +85,7 @@ contract Lot {
                 )
             )
         );
-        emit BuyLot(sender, newPrice, snapshot);
+        return snapshot;
     }
 
 
@@ -171,9 +157,6 @@ contract Lot {
         return initBalance;
     }
 
-     function GetSnap() external view returns (uint256) {
-        return snapshot;
-    }
 
 
     

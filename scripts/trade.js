@@ -1,10 +1,15 @@
+const Web3 = require('web3');
+const web3 = new Web3;
+
+
 async function main() {
-    const accounts = await ethers.getSigners();
-    const maddr = "0xfc767640379e558D835e641dEBBDAd9B9Dc54798"
-    const paddr = "0x0b1Fe1fed251bE5f1aD0195cFCdd5B98c1396e3D"
-    const paramaddr = "0x3559D1FbCA502088944aEAdb65E633a168066c2a"
-    const jumpaddr = "0x37521E4854712448380a4FFfA6c005c431573946"
-    const groupaddr = "0x69ff2e622861947876eD40BCaE4eC7c4396C59F3"
+
+
+    const maddr = "0xC93e4EE54A809ad57cd8294A89a32EC89F80D5e6"
+    const paddr = "0x9d183C5AC6fF7C2FB319871b573BA73F2eeC4e28"
+    const paramaddr = "0xB9E90d08248F4C04B6c06834B58188940DD6A047"
+    const jumpaddr = "0x18888B1d40490d96C0dB4871BDa63cAc47F696aE"
+    const groupaddr = "0x104B8c0E5AA2514e8D13C8f94A2D82Fe25664523"
     const contract = await ethers.getContractFactory("Group", {
         libraries: {
             Math: maddr,
@@ -26,26 +31,32 @@ async function main() {
     const paramLib = await ethers.getContractFactory("Params");
     const paramslib = paramLib.attach(paramaddr);
 
-    let CreateLotTx = await group.CreateLot();
-    let lotTx = await CreateLotTx.wait();
-    lotAddr = lotTx.events[0].args._lotAddr;
 
-    console.log("lot created");
+    const accounts = await ethers.getSigners();
 
+    const deposit = 3000
 
-    let timeF = Date.now() + 120;
-    let timeS = timeF + 100;
-    let value = 1000;
-    let initPrice = 100;
+    let createRound = await group.CreateRound(deposit);
+    await createRound.wait();
+    console.log("round created");
 
-    const creatorNumber = 0;
-    balances = [];
     for (let i = 0; i < accounts.length; i++) {
-        balances.push(3000);
+        let enter = await group.connect(accounts[i]).Enter({ value: deposit });
+        await enter.wait();
+        console.log("enter");
     }
 
-    params = [];
+    let startRound = await group.StartRound();
+    await startRound.wait();
+    console.log("round started");
+
+
+
+    let balances = []
+    let params = []
+
     for (let i = 0; i < accounts.length; i++) {
+        balances.push(BigInt(deposit))
         params.push(
             {
                 owner: accounts[i].address,
@@ -56,8 +67,9 @@ async function main() {
             }
         )
     }
+
     async function GetProofParams(CurrentNumber) {
-        let H = await group.GetInitSnapRound();
+        let H = ethers.BigNumber.from("115792089237316195423570985008687907853269984665640564039457584007913129639935");
         let snap;
         for (let i = 0; i < accounts.length; i++) {
             if (i != CurrentNumber) {
@@ -74,13 +86,11 @@ async function main() {
         return H;
     }
 
-
     async function GetProofPlayer(CurrentNumber) {
-        let H = await group.GetInitSnapRound();
-        let snap;
+        let H = ethers.BigNumber.from("115792089237316195423570985008687907853269984665640564039457584007913129639935");
         for (let i = 0; i < accounts.length; i++) {
             if (i != CurrentNumber) {
-                snap = await mlib.GetSnap(accounts[i].address, balances[i]);
+                const snap = await mlib.GetSnap(accounts[i].address, balances[i]);
                 H = await mlib.xor(H, snap);
             }
         }
@@ -88,83 +98,142 @@ async function main() {
     }
 
     async function GetProofPlayerDouble(prevnumber, curnumber) {
-        let H = await group.GetInitSnapRound();
+        let H = ethers.BigNumber.from("115792089237316195423570985008687907853269984665640564039457584007913129639935");
         for (let i = 0; i < accounts.length; i++) {
             if (i != prevnumber && i != curnumber) {
-                snap = await mlib.GetSnap(accounts[i].address, balances[i]);
+                const snap = await mlib.GetSnap(accounts[i].address, balances[i]);
                 H = await mlib.xor(H, snap);
             }
         }
         return H;
     }
 
-    let H = await GetProofPlayer(creatorNumber);
+    async function IterLot(lotAddr, creatorNumber, ownerNumber, timeF, timeS, value, initPrice) {
+        let Hres = await GetProofPlayer(creatorNumber);
 
-    let newlot = await group.connect(accounts[creatorNumber]).NewLot(lotAddr, timeF, timeS,
-        initPrice, value, H, balances[creatorNumber]);
-    await newlot.wait();
-    console.log("new lot");
+        let dataProofRes = web3.eth.abi.encodeParameters(
+            ['uint256', 'uint256', 'uint256'],
+            [balances[creatorNumber], initPrice, Hres]
+        );
 
-    balances[creatorNumber] -= Number(initPrice);
+        let dataInit = web3.eth.abi.encodeParameters(
+            ['uint256', 'uint256', 'uint256'],
+            [timeF, timeS, value]
+        );
 
-    let snapshot = await mlib.GetNewBuySnapshot(accounts[creatorNumber].address, initPrice, 0);
+        await (await group.connect(accounts[creatorNumber]).NewLot(lotAddr, dataInit, dataProofRes)).wait();
+        console.log("new lot");
 
-    let prevSnapshot = 0;
+        balances[creatorNumber] -= BigInt(initPrice);
 
-    Hres = await GetProofPlayer(1);
-    Hd = await GetProofPlayerDouble(creatorNumber, 1);
+        let snapshot = await mlib.GetNewBuySnapshot(accounts[creatorNumber].address, initPrice, 0);
 
-    let price = initPrice;
-    let prevPrice = price;
-    price = initPrice + 100;
-
-    let buylot = await group.connect(accounts[1]).BuyLot
-        (lotAddr, price, Hres, Hd, balances[1],
-            balances[creatorNumber], accounts[creatorNumber].address, prevPrice, prevSnapshot);
-    buylot.wait();
-    console.log("buy lot");
-
-    balances[creatorNumber] += Number(price);
-    balances[1] -= Number(price);
-
-    prevSnapshot = snapshot;
-    snapshot = await mlib.GetNewBuySnapshot(accounts[1].address, price, snapshot);
-
-    let dataInit = await paramslib.EncodeInitParams(timeF, timeS, value);
-
-    let sendlot = await group.connect(accounts[0]).SendLot(lotAddr, dataInit);
-    await sendlot.wait();
-    console.log("send lot");
+        let owner = accounts[creatorNumber].address;
+        let balance = balances[creatorNumber];
+        let price = initPrice;
+        let prevOwner = owner;
+        let prevBalance = balance;
+        let prevPrice = price;
+        let prevSnapshot = 0;
+        let prevNumber = creatorNumber;
 
 
+        for (let i = 1; i <= ownerNumber; i++) {
+            Hres = await GetProofPlayer(i);
+            Hd = await GetProofPlayerDouble(prevNumber, i);
 
-    Hres = await GetProofPlayer(1);
-    Hp = await GetProofParams(1);
+            price = initPrice + i;
+            owner = accounts[i].address;
+            balance = balances[i];
+
+            let dataProofRes = web3.eth.abi.encodeParameters(
+                ['uint256', 'uint256', 'uint256', 'uint256', 'address', 'uint256'],
+                [balance, price, Hres, Hd, prevOwner, prevBalance]
+            );
+
+            let dataProofEP = web3.eth.abi.encodeParameters(
+                ['address', 'uint256', 'uint256'],
+                [prevOwner, prevPrice, prevSnapshot]
+            );
+
+            await (await group.connect(accounts[i]).BuyLot(lotAddr, dataProofRes, dataProofEP)).wait();
+            console.log("buy lot");
+
+            balances[i] -= BigInt(price);
+            balances[prevNumber] += BigInt(price);
+            prevBalance = balances[i];
+            prevPrice = price;
+            prevOwner = owner;
+            prevNumber = i;
+            prevSnapshot = snapshot;
+            snapshot = await mlib.GetNewBuySnapshot(owner, price, snapshot);
+        }
+
+        ///Encode send///
+
+        let sendTx = await group.SendLot(lotAddr, dataInit);
+        await sendTx.wait()
+        console.log("send lot");
+
+        Hres = await GetProofPlayer(ownerNumber);
+        Hp = await GetProofParams(ownerNumber);
+
+        dataProofRes = web3.eth.abi.encodeParameters(
+            ['uint256', 'uint256', 'uint256', 'uint256'],
+            [balances[ownerNumber], price, Hres, prevSnapshot]
+        );
+
+        Hp = await GetProofParams(ownerNumber);
+
+        dataParams = web3.eth.abi.encodeParameters(
+            ['address', 'uint', 'uint', 'uint', 'uint', 'uint'],
+            [params[ownerNumber].owner,
+            params[ownerNumber].nwin,
+            params[ownerNumber].n,
+            params[ownerNumber].spos,
+            params[ownerNumber].sneg,
+                Hp]
+        );
+
+        const receiveTx = await group.ReceiveLot(
+            lotAddr,
+            accounts[ownerNumber].address,
+            dataInit,
+            dataProofRes,
+            dataParams
+        );
+
+        await receiveTx.wait();
+        console.log("receive lot");
+    }
+
+    const lotTx = await (await group.CreateLot()).wait();
+    const lotAddr = lotTx.events[0].args._lotAddr;
+    console.log("lot created", lotAddr);
+
+    let timeF = Date.now() + 120;
+    let timeS = timeF + 100;
+    let value = 65;
+    let initPrice = 100;
 
 
-    const dataProof = await plib.EncodeProofRes(balances[1], price, Hres, prevSnapshot);
+    let creatorNumber = 0;
+    let ownerNumber = 1;
+
+    await IterLot(lotAddr, creatorNumber, ownerNumber, timeF, timeS, value, initPrice);
+
+    timeF = Date.now() + 120;
+    timeS = timeF + 100;
+    value = 75;
+    initPrice = 200;
 
 
-    Hp = await GetProofParams(1);
+    creatorNumber = 2;
+    ownerNumber = 3;
 
-    dataParams = await paramslib.EncodePlayerParams(
-        params[1].owner,
-        params[1].nwin,
-        params[1].n,
-        params[1].spos,
-        params[1].sneg,
-        Hp
-    );
+    await IterLot(lotAddr, creatorNumber, ownerNumber, timeF, timeS, value, initPrice);
 
-    let receivelot = await group.connect(accounts[0]).ReceiveLot(
-        lotAddr,
-        accounts[1].address,
-        dataInit,
-        dataProof,
-        dataParams
-    );
-    await receivelot.wait();
-    console.log("receive lot");
+
 }
 
 main().catch((error) => {

@@ -2,21 +2,34 @@ async function main() {
 
     const contract = await ethers.getContractFactory("Group", {
         libraries: {
-            Math: "0x97a72E5B576c92271F8dD8C54a99E1b114D6b85E",
-            Proof: "0xA5de3AF81B9400375c7631b58922A4737A768Aa1",
-            Params: "0x794B32827D690D36EEA7249b5f273A92F34bc6C5",
-            JumpSnap: "0x7997d2404C7c27cB1Eb24a886ba9463872E2f1E8"
+            Math: "0xa7040CcC6d1A95ff80bf159E560Fcfda58a9cD44",
+            Proof: "0x7304ad33066DD731693a3C92cd8f84fA3f713CeF",
+            Params: "0x3ef6183ffc8081157aa00cb201ABe354283De9EE",
+            JumpSnap: "0x6A047261eAE04981464d0070c28020343FF1C152"
         },
     });
 
-    const group = contract.attach("0x6c509668E26f1F0e14E6F4E97CbdfF99C9cfA03C");
+    const group = contract.attach("0xD1A6edbe1fa1ed7E87374Fe464C2eD3e0a5DbcA3");
+
 
     const accounts = await ethers.getSigners();
 
+    const deposit = 3000
+
+    let createRound = await group.CreateRound(deposit);
+    await createRound.wait();
+    console.log("round created");
+
+    for (let i = 0; i < accounts.length; i++) {
+        let enter = await group.connect(accounts[i]).Enter({ value: deposit });
+        await enter.wait();
+        console.log("enter");
+    }
 
     let startRound = await group.StartRound();
     await startRound.wait();
     console.log("round started");
+    //lotTx.events[4].args._lotAddr
 }
 
 

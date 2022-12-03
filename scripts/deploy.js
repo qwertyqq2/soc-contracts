@@ -35,23 +35,7 @@ async function main() {
 
   console.log("Group created, address:", group.address);
 
-  const accounts = await ethers.getSigners();
 
-  const deposit = 3000
-
-  let createRound = await group.CreateRound(deposit);
-  await createRound.wait();
-  console.log("round created");
-
-  for (let i = 0; i < accounts.length; i++) {
-    let enter = await group.connect(accounts[i]).Enter({ value: deposit });
-    await enter.wait();
-    console.log("enter");
-  }
-
-  let startRound = await group.StartRound();
-  await startRound.wait();
-  console.log("round started");
 }
 
 

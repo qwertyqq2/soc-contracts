@@ -115,7 +115,7 @@ contract Lot {
         Params.InitParams calldata init,
         Proof.ProofRes calldata proof
     ) public onlyRound proofInit(init) proofOwner(proof){
-        require(state == uint256(keccak256(abi.encode("wait"))), "not wait");
+        require(state == uint256(keccak256(abi.encode("wait"))), "not waiting");
         require(block.timestamp>0, "Not correct time");
         state = uint256(keccak256(abi.encode("closed")));
     }

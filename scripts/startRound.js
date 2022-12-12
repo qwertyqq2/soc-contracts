@@ -1,20 +1,19 @@
 async function main() {
-
     const contract = await ethers.getContractFactory("Group", {
         libraries: {
-            Math: "0xa7040CcC6d1A95ff80bf159E560Fcfda58a9cD44",
-            Proof: "0x7304ad33066DD731693a3C92cd8f84fA3f713CeF",
-            Params: "0x3ef6183ffc8081157aa00cb201ABe354283De9EE",
-            JumpSnap: "0x6A047261eAE04981464d0070c28020343FF1C152"
+            Math: "0xFfe678f76a0bFD7f32e84a647Ba7de7ab4531B41",
+            Proof: "0x01D8a95F1d14AFA2f21Bdd9137540B79003f4E9A",
+            Params: "0x927b0648387f975f5b50Bb41f4C7Cd05D80ad195",
+            JumpSnap: "0xe0aAd47155f173591847Af5AD79855195630eBb5"
         },
     });
 
-    const group = contract.attach("0xD1A6edbe1fa1ed7E87374Fe464C2eD3e0a5DbcA3");
+    const group = contract.attach("0xd08124f0713032601ac661Fc9944988bf4d6c083");
 
 
     const accounts = await ethers.getSigners();
 
-    const deposit = 3000
+    const deposit = 1000
 
     let createRound = await group.CreateRound(deposit);
     await createRound.wait();
@@ -29,7 +28,18 @@ async function main() {
     let startRound = await group.StartRound();
     await startRound.wait();
     console.log("round started");
-    //lotTx.events[4].args._lotAddr
+
+    let lotTx = await (await group.CreateLot()).wait();
+    let lotAddr = lotTx.events[0].args._lotAddr;
+    console.log("lot created", lotAddr);
+
+    lotTx = await (await group.CreateLot()).wait();
+    lotAddr = lotTx.events[0].args._lotAddr;
+    console.log("lot created", lotAddr);
+
+    lotTx = await (await group.CreateLot()).wait();
+    lotAddr = lotTx.events[0].args._lotAddr;
+    console.log("lot created", lotAddr);
 }
 
 

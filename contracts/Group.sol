@@ -8,6 +8,8 @@ import "./libraries/Proof.sol";
 import "./libraries/JumpSnap.sol";
 
 contract Group {
+    uint LionDota = 1;
+
     event CreateRoundEvent(address _roundAddress, uint256 _deposit);
 
     event EnterRoundEvent(address _roundAddress, address _sender);
@@ -122,6 +124,7 @@ contract Group {
         bytes memory initParamsData,
         bytes memory proofResData
     ) external {
+        require(msg.sender!=address(0), "Sender in null");
         Proof.ProofRes memory proof = Proof.DecodeProofResNewLot(proofResData);
         proof.owner = msg.sender;
         Params.InitParams memory initParams = Params.DecodeInitParams(initParamsData);
@@ -140,8 +143,22 @@ contract Group {
              lotSnap,
              balancesSnap
      );
-     console.log("New lot!");
     }
+
+    function GetProofEp(address _lotAddr, uint newPrice, bytes memory proofEPData) 
+        external view returns(bool, uint, uint){
+        IRound round = IRound(roundAddr);
+        Proof.ProofEnoungPrice memory proofEP = Proof.DecodeProofEP(proofEPData);
+        return round.CorrectEp(_lotAddr, newPrice, proofEP);
+    }
+
+     function GetProofResNewLot(bytes memory proofResData) external view returns(bool, uint, uint){
+        IRound round = IRound(roundAddr);
+        Proof.ProofRes memory proof = Proof.DecodeProofResNewLot(proofResData);
+        proof.owner = msg.sender;
+        return round.EnoughRes(proof);
+    }
+
 
     function BuyLot(
         address _lotAddr,
@@ -163,7 +180,6 @@ contract Group {
             lotSnap,
             balancesSnap
         );
-        console.log("Buy lot!");
     }
 
 
@@ -175,7 +191,6 @@ contract Group {
         IRound round = IRound(roundAddr);
         uint amountOut = round.SendLot(_lotAddr, initParams);
         emit SendLotEvent(roundAddr, _lotAddr, amountOut);
-        console.log("Send lot!");
     }
 
     function ReceiveLot(
@@ -213,7 +228,6 @@ contract Group {
             psnap,
             bsnap
         );
-        console.log("Receive lot!");
     }
 
 
@@ -229,13 +243,12 @@ contract Group {
         emit WithdrawEvent(msg.sender, psnap, bsnap);
     }
 
-
-    function EncodeEP(address _prevOwner, uint _prevPrice, uint _prevSnap) external view{
-        bytes memory data = Proof.EncodeProofEnoungPrice(_prevOwner, _prevPrice, _prevSnap);
-        console.logBytes(data);
-        Proof.ProofEnoungPrice memory proofEP = Proof.DecodeProofEP(data);
-        console.log(proofEP.prevOwner);
-        console.log(proofEP.prevPrice);
-        console.log(proofEP.prevSnap);
+    function TestDecodeProofRes(
+        bytes memory proofResData
+    )external view returns(address, uint, uint, uint){
+        Proof.ProofRes memory proof = Proof.DecodeProofResNewLot(proofResData);
+        proof.owner = msg.sender;
+        return (proof.owner, proof.balance, proof.price, proof.Hres);
     }
+
 }  

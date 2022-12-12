@@ -51,4 +51,7 @@ interface ILot {
     function Return(uint256 _snap) external;
 
     function GetSnap() external view returns (uint256);
+
+    function CorrectPrice(Proof.ProofEnoungPrice calldata proof, uint newPrice) 
+        external view returns(bool, uint, uint);
 }

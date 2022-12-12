@@ -16,7 +16,6 @@ import "./libraries/Params.sol";
 import "./Lot.sol";
 import "./UniswapRouter/UniswapRouter.sol";
 
-import "hardhat/console.sol";
 
 contract Round {
     address addr;
@@ -73,7 +72,7 @@ contract Round {
     function StartRound() external onlyGroup returns(uint, uint){
         uint8 i=0;
         for (i = 0; i < pendingAddress.length; i++) {
-            balancesSnap = Math.xor(
+            balancesSnap = Math.xor(                            //////Это?!
                 balancesSnap, uint256(keccak256(abi.encodePacked(uint256(uint160(pendingAddress[i])), deposit))));          
             uint psnap = Params.GetSnapParamPlayerOut(pendingAddress[i], 0, 0, 0, 0);
             paramsSnap = Math.xor(psnap, paramsSnap);
@@ -110,8 +109,20 @@ contract Round {
         _;
     }
 
+    function EnoughRes(Proof.ProofRes calldata proof)external view returns(bool, uint, uint){
+        uint res = Proof.GetProofBalance(proof);
+        if(res == balancesSnap&&proof.price<=proof.balance){
+            return (true, balancesSnap, res);
+        }
+        else{
+            return (false, balancesSnap, res);
+        }
+    }
+
+
     modifier checkValue(uint price, uint value){
         IUniV3Router router = IUniV3Router(routerAddr);
+        require(price<MaxRange, "incorrect price");
         require(value <= router.getBalanceEth()*price/MaxRange, "incorrect value!");
         _;
     }
@@ -127,6 +138,15 @@ contract Round {
         uint lotSnap = lot.New(initParams.timeFirst, initParams.timeSecond, proofRes.owner, proofRes.price, initParams.value);
         balancesSnap = JumpSnap.SnapNew(proofRes.owner, proofRes.balance, proofRes.price, proofRes.Hres);
         return (lotSnap, balancesSnap);
+    }
+
+    function CorrectEp(
+        address _lotAddr, 
+        uint _newPrice,
+        Proof.ProofEnoungPrice calldata _proofEP
+        ) external view returns(bool, uint, uint){
+        ILot lot = ILot(_lotAddr);
+        return lot.CorrectPrice(_proofEP, _newPrice);
     }
 
     function BuyLot(
@@ -229,7 +249,6 @@ contract Round {
                 _proof.balance,
                 _params, 
                 uint(res));
-            console.log(_proof.balance, newBalance);
             balancesSnap =  uint256(
                 keccak256(
                     abi.encode(
@@ -254,7 +273,6 @@ contract Round {
                 _params, 
                 uint(Math.Abs(res))
                 );
-            console.log(_proof.balance, newBalance);
 
             balancesSnap =  uint256(
                 keccak256(

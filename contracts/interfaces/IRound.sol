@@ -58,6 +58,12 @@ interface IRound {
 
     function GetBalancesSnap() external view returns(uint);
 
+    function EnoughRes(Proof.ProofRes calldata proof)external view returns(bool, uint, uint);
 
+    function CorrectEp(
+        address _lotAddr, 
+        uint _newPrice,
+        Proof.ProofEnoungPrice calldata _proofEP
+        ) external view returns(bool, uint, uint);
 
 }

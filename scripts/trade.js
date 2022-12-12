@@ -5,11 +5,11 @@ const web3 = new Web3;
 async function main() {
 
 
-    const maddr = "0xC93e4EE54A809ad57cd8294A89a32EC89F80D5e6"
-    const paddr = "0x9d183C5AC6fF7C2FB319871b573BA73F2eeC4e28"
-    const paramaddr = "0xB9E90d08248F4C04B6c06834B58188940DD6A047"
-    const jumpaddr = "0x18888B1d40490d96C0dB4871BDa63cAc47F696aE"
-    const groupaddr = "0x104B8c0E5AA2514e8D13C8f94A2D82Fe25664523"
+    const maddr = "0x3E3030fC5B906D1D8864176fc08FB8ea101A1f22"
+    const paddr = "0x61Fc53A3E19164B9261D4268C5E8e41b9DeFC579"
+    const paramaddr = "0x33d9E4eE09f006da95F0C849389d3e3AaeC43025"
+    const jumpaddr = "0x6222110F2aCaC28e372be95Ba1d3E038534F1917"
+    const groupaddr = "0xaE60f7C7701A2D497db5601147B46e415C422275"
     const contract = await ethers.getContractFactory("Group", {
         libraries: {
             Math: maddr,

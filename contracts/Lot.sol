@@ -5,8 +5,6 @@ import "./libraries/Proof.sol";
 import "./libraries/Params.sol";
 
 
-import "hardhat/console.sol";
-
 
 contract Lot {
     address roundAddr;
@@ -68,6 +66,16 @@ contract Lot {
         require(proofSnap == snapshot, "Not right previous owner");
         require(newPrice>proof.prevPrice, "New price less than old");
         _;
+    }
+
+    function CorrectPrice(Proof.ProofEnoungPrice calldata proof, uint newPrice) 
+        external view returns(bool, uint, uint){
+        uint proofSnap = Proof.GetProofEnoughPrice(proof);
+        if(proofSnap == snapshot&&newPrice>proof.prevPrice){
+            return (true, snapshot, proofSnap);
+        }else{
+            return (false, snapshot, proofSnap);
+        }
     }
 
     function Buy(

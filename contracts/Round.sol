@@ -69,7 +69,7 @@ contract Round {
         _;
     }
 
-    function StartRound() external onlyGroup returns(uint, uint){
+    function StartRound() external onlyGroup returns(uint, uint, uint, uint){
         uint8 i=0;
         for (i = 0; i < pendingAddress.length; i++) {
             balancesSnap = Math.xor(                            //////Это?!
@@ -81,17 +81,16 @@ contract Round {
         UniV3Router uni = new UniV3Router(address(this));
         uni.Deposit{value: address(this).balance}();
         routerAddr = address(uni);
-
         balancesSnap = uint256(keccak256(abi.encode(balancesSnap)));
         paramsSnap = uint256(keccak256(abi.encode(paramsSnap)));
         timeCreation = block.timestamp;
-        duration = 1000000;
+        duration = 0;
 
         MaxRange = deposit * pendingAddress.length;
 
-        Spos = deposit;
-        Sneg = deposit;
-        return (balancesSnap, paramsSnap);
+        Spos = 3*deposit;
+        Sneg = deposit/3;
+        return (uni.getBalanceEth(), MaxRange, balancesSnap, paramsSnap);
     }
 
     function CreateLot() external onlyGroup returns(address){
@@ -131,7 +130,7 @@ contract Round {
         address _lotAddr,
         Params.InitParams memory initParams,
         Proof.ProofRes calldata proofRes
-    ) public onlyGroup enoughRes(proofRes) returns(uint, uint){
+    ) public onlyGroup returns(uint, uint){
         IUniV3Router router = IUniV3Router(routerAddr);
         require(initParams.value <= router.getBalanceEth()*proofRes.price/MaxRange, "incorrect value!");
         ILot lot = ILot(_lotAddr);
@@ -153,7 +152,7 @@ contract Round {
         address _lotAddr,
         Proof.ProofRes calldata _proofRes, 
         Proof.ProofEnoungPrice calldata _proofEP 
-     ) public onlyGroup enoughRes(_proofRes) returns(uint, uint){
+     ) public onlyGroup returns(uint, uint){
         ILot lot = ILot(_lotAddr);
         uint lotSnap = lot.Buy(_proofRes.owner, _proofRes.price, _proofEP);
         balancesSnap = JumpSnap.SnapBuy(
@@ -171,13 +170,14 @@ contract Round {
     function SendLot(
         address _lotAddr,
         Params.InitParams memory initParams
-    ) public onlyGroup returns(uint amountOut){
+    ) public onlyGroup returns(uint amountOut, uint reserve){
         ILot lot = ILot(_lotAddr);
         lot.End(initParams);
-        IUniV3Router router = IUniV3Router(routerAddr);
-        lot.SetInitBalance(router.getBalanceEth());
-        amountOut = router.swapWETHToDAI(initParams.value);
-        lot.SetReceiveTokens(amountOut);        
+        IUniV3Router uni = IUniV3Router(routerAddr);
+        lot.SetInitBalance(uni.getBalanceEth());
+        amountOut = uni.swapWETHToDAI(initParams.value);
+        lot.SetReceiveTokens(amountOut);    
+        reserve = uni.getBalanceEth();    
     }
 
     function GetSnapParamPlayer( 
@@ -194,9 +194,11 @@ contract Round {
     function _updatePlus(
         uint _balance,
         Params.PlayerParams calldata _params,
-        uint _delta
+        uint _delta,
+        uint _price
         ) private view returns(uint, uint, bytes memory dataParams){
-            uint curbalance = _balance + ((MaxRange - _balance)*100*(_params.spos + _delta)/Spos)/100;
+            //uint curbalance = _balance + ((MaxRange - _balance)*100*(_params.spos + _delta)/Spos)/100;
+            uint curbalance = _balance + _price + ((MaxRange - _balance)*(_params.spos + _delta)/Spos);
             dataParams = abi.encode(_params.owner, 
                  _params.nwin +1, 
                  _params.n +1, 
@@ -232,14 +234,15 @@ contract Round {
         Params.InitParams calldata _init,
         Proof.ProofRes calldata _proof,
         Params.PlayerParams calldata _params
-    )  public onlyGroup correctParams(_params) returns(bytes memory dataParams, uint newBalance){
+    )  public onlyGroup returns(bytes memory dataParams, uint newBalance, uint reserve){
         IUniV3Router router = IUniV3Router(routerAddr);
         ILot lot = ILot(_lotAddr);
         lot.Close(_init, _proof);
         uint receiveTokens = lot.GetReceiveTokens();
         router.swapDAItoWETH(receiveTokens);
+        reserve = router.getBalanceEth();
 
-        int res = int(router.getBalanceEth()) - int(_init.value);
+        int res = int(router.getBalanceEth()) - int(lot.GetInitBalance());
 
         uint snapParams;
 
@@ -248,7 +251,8 @@ contract Round {
             (snapParams, newBalance, dataParams) = _updatePlus(
                 _proof.balance,
                 _params, 
-                uint(res));
+                uint(res),
+                _proof.price);
             balancesSnap =  uint256(
                 keccak256(
                     abi.encode(
@@ -271,8 +275,7 @@ contract Round {
             (snapParams, newBalance, dataParams) = _updateMinus(
                 _proof.balance,
                 _params, 
-                uint(Math.Abs(res))
-                );
+                uint(Math.Abs(res)));
 
             balancesSnap =  uint256(
                 keccak256(
@@ -297,11 +300,11 @@ contract Round {
     function Withdraw(
         Params.PlayerParams calldata _params,
         Proof.ProofRes calldata _proof
-        ) external onlyGroup correctParams(_params) returns(uint, uint){
+        ) external onlyGroup returns(uint, uint){
         require(block.timestamp>timeCreation+duration, "it is too early");
-        IUniV3Router router = IUniV3Router(routerAddr);
-        uint countOut = (router.getBalanceEth()*100*_params.spos/Spos)/100;
-        router.withdraw(countOut);
+        IUniV3Router uni = IUniV3Router(routerAddr);
+        uint countOut = (uni.getBalanceEth()*100*_params.spos/Spos)/100;
+        uni.withdraw(countOut);
         payable(msg.sender).transfer(countOut);
 
         uint snapParams =  Params.GetSnapNullPlayer(_params);
@@ -320,6 +323,11 @@ contract Round {
                             uint256(keccak256(abi.encodePacked(uint256(uint160(_params.owner)), uint(0))))
                             ))));
         return (paramsSnap, balancesSnap);
+    }
+
+    function GetReserve() external view returns(uint){
+        IUniV3Router uni = IUniV3Router(routerAddr);
+        return uni.getBalanceEth();
     }
 
     function GetBalancesSnap() external view onlyGroup returns(uint){

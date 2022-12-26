@@ -37,7 +37,7 @@ contract Lot {
         uint256 price,
         uint256 value
     ) external onlyRound returns(uint){
-        require(state == uint256(keccak256(abi.encode("closed"))), "Not new");
+        require(state == uint256(keccak256(abi.encode("closed"))), "lot has not been completed");
         snapshot = uint256(
             keccak256(
                 abi.encodePacked(
@@ -82,7 +82,7 @@ contract Lot {
         address sender, 
         uint256 newPrice,
         Proof.ProofEnoungPrice calldata proof
-        ) external onlyRound correctPrice(proof, newPrice) returns(uint){
+        ) external onlyRound returns(uint){
         require(state == uint256(keccak256(abi.encode("empty"))), "not empty");
         snapshot = uint256(
             keccak256(
@@ -116,6 +116,7 @@ contract Lot {
         Params.InitParams calldata init
         ) public onlyRound proofInit(init) {
         require(block.timestamp> 0, "Not correct time");
+        require(state!=uint256(keccak256(abi.encode("wait"))), "already send");
         state = uint256(keccak256(abi.encode("wait")));
     }
 
@@ -123,11 +124,10 @@ contract Lot {
         Params.InitParams calldata init,
         Proof.ProofRes calldata proof
     ) public onlyRound proofInit(init) proofOwner(proof){
-        require(state == uint256(keccak256(abi.encode("wait"))), "not waiting");
+        require(state == uint256(keccak256(abi.encode("wait"))), "was not sent");
         require(block.timestamp>0, "Not correct time");
         state = uint256(keccak256(abi.encode("closed")));
     }
-
 
 
     function snapInit(

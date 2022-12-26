@@ -8,7 +8,7 @@ import "../libraries/Params.sol";
 interface IRound {
     function Enter(address _sender, uint256 _value) external;
 
-    function StartRound() external returns(uint, uint);
+    function StartRound() external returns(uint, uint, uint, uint);
 
     function CreateLot() external returns(address);
 
@@ -31,7 +31,7 @@ interface IRound {
     function SendLot(
         address _lotAddr,
         Params.InitParams memory initParams
-    ) external returns(uint amountOut);
+    ) external returns(uint amountOut, uint reserve);
 
 
     function ReceiveLot(
@@ -39,12 +39,14 @@ interface IRound {
         Params.InitParams calldata _init,
         Proof.ProofRes calldata _proof,
         Params.PlayerParams calldata _params
-    ) external returns(bytes memory, uint);
+    ) external returns( bytes memory, uint);
 
     function Withdraw(
         Params.PlayerParams calldata _params,
         Proof.ProofRes calldata _proof
         ) external returns(uint, uint);
+
+    function GetReserve() external view returns(uint);
 
     function GetSnap() external view returns (uint256);
 

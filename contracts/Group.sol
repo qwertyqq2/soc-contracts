@@ -7,16 +7,26 @@ import "./interfaces/IRound.sol";
 import "./libraries/Proof.sol";
 import "./libraries/JumpSnap.sol";
 
+
 contract Group {
-    uint LionDota = 1;
+    event CreateRoundEvent(
+        address _roundAddress, 
+        uint256 _deposit);
 
-    event CreateRoundEvent(address _roundAddress, uint256 _deposit);
+    event EnterRoundEvent(
+        address _roundAddress, 
+        address _sender);
 
-    event EnterRoundEvent(address _roundAddress, address _sender);
+    event StartRoundEvent(
+        address _roundAddress, 
+        uint _reserve, 
+        uint _maxRange, 
+        uint _bsnap, 
+        uint _psnap);
 
-    event StartRoundEvent(address _roundAddress, uint _bsnap, uint _psnap);
-
-    event CreatedLotEvent(address _roundAddress, address _lotAddr);
+    event CreatedLotEvent(
+        address _roundAddress, 
+        address _lotAddr);
 
     event NewLotEvent(
          address _roundAddress,
@@ -43,7 +53,8 @@ contract Group {
     event SendLotEvent(
         address _roundAddress,
         address _lotAddr,
-        uint256 _receiveTokens
+        uint256 _receiveTokens,
+        uint256 _reserve
     );
 
     event UpdatePlayerParams(
@@ -63,6 +74,7 @@ contract Group {
         uint _balance,
         uint _SposDelta,
         uint _SnegDelta,
+        uint _reserve,
         uint _psnap,
         uint _bsnap
     );
@@ -103,8 +115,10 @@ contract Group {
         IRound round = IRound(roundAddr);
         uint bsnap;
         uint psnap;
-        (bsnap, psnap) = round.StartRound();
-        emit StartRoundEvent(roundAddr, bsnap, psnap);
+        uint reserve;
+        uint maxRange;
+        (reserve, maxRange, bsnap, psnap) = round.StartRound();
+        emit StartRoundEvent(roundAddr, reserve, maxRange, bsnap, psnap);
     }
 
     function CreateLot() external{
@@ -189,8 +203,10 @@ contract Group {
     ) external{
         Params.InitParams memory initParams = Params.DecodeInitParams(initParamsData);
         IRound round = IRound(roundAddr);
-        uint amountOut = round.SendLot(_lotAddr, initParams);
-        emit SendLotEvent(roundAddr, _lotAddr, amountOut);
+        uint amountOut;
+        uint reserve;
+        (amountOut, reserve) = round.SendLot(_lotAddr, initParams);
+        emit SendLotEvent(roundAddr, _lotAddr, amountOut, reserve);
     }
 
     function ReceiveLot(
@@ -225,6 +241,7 @@ contract Group {
             newBalance,
             NewParams.spos - params.spos,
             NewParams.sneg - params.sneg,
+            round.GetReserve(), 
             psnap,
             bsnap
         );
@@ -243,12 +260,5 @@ contract Group {
         emit WithdrawEvent(msg.sender, psnap, bsnap);
     }
 
-    function TestDecodeProofRes(
-        bytes memory proofResData
-    )external view returns(address, uint, uint, uint){
-        Proof.ProofRes memory proof = Proof.DecodeProofResNewLot(proofResData);
-        proof.owner = msg.sender;
-        return (proof.owner, proof.balance, proof.price, proof.Hres);
-    }
 
 }  

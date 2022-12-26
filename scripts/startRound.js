@@ -1,14 +1,14 @@
 async function main() {
     const contract = await ethers.getContractFactory("Group", {
         libraries: {
-            Math: "0xFfe678f76a0bFD7f32e84a647Ba7de7ab4531B41",
-            Proof: "0x01D8a95F1d14AFA2f21Bdd9137540B79003f4E9A",
-            Params: "0x927b0648387f975f5b50Bb41f4C7Cd05D80ad195",
-            JumpSnap: "0xe0aAd47155f173591847Af5AD79855195630eBb5"
+            Math: "0xEA5efF5c7BF7C307255E91013092220F7585e8be",
+            Proof: "0xD494E1F2Fe0f59F0df821a3c22c519e8Fd5a3F8A",
+            Params: "0x2D86f65f8Ff7809998BB3ed99387E56cc3a3dB74",
+            JumpSnap: "0x8dEAB96676322c60b1f1EF2A46535F788422f7E0"
         },
     });
 
-    const group = contract.attach("0xd08124f0713032601ac661Fc9944988bf4d6c083");
+    const group = contract.attach("0x70b8E5De6224Bd4A5De5089e5bB0F4D8Cf1e771d");
 
 
     const accounts = await ethers.getSigners();
@@ -24,7 +24,6 @@ async function main() {
         await enter.wait();
         console.log("enter");
     }
-
     let startRound = await group.StartRound();
     await startRound.wait();
     console.log("round started");

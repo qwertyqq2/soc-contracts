@@ -1,3 +1,4 @@
+
 const { expect } = require("chai");
 const deposit = BigInt("10000")
 const Web3 = require('web3');
@@ -122,7 +123,6 @@ describe.only("Snapshot players", async () => {
         async function IterLot(creatorNumber, ownerNumber, timeF, timeS, value, initPrice) {
             const lotTx = await (await group.CreateLot()).wait();
             const lotAddr = lotTx.events[0].args._lotAddr;
-            console.log("lot created", lotAddr);
             let Hres = await GetProofPlayer(creatorNumber);
 
             let dataProofRes = web3.eth.abi.encodeParameters(
@@ -159,13 +159,6 @@ describe.only("Snapshot players", async () => {
                 owner = accounts[i].address;
                 balance = balances[i];
 
-                // uint _balance,
-                // uint256 _price,
-                // uint _Hres,
-                // uint _Hd,
-                // uint _prevSnap,
-                // address _prevOwner,
-                // uint _prevBalance
                 let dataProofRes = web3.eth.abi.encodeParameters(
                     ['uint256', 'uint256', 'uint256', 'uint256', 'address', 'uint256'],
                     [balance, price, Hres, Hd, prevOwner, prevBalance]

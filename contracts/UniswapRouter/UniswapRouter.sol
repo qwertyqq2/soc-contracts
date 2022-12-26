@@ -27,8 +27,8 @@ contract UniV3Router {
     function swapDAItoWETH(uint amountIn) external returns(uint256){
         require(balanceDAI>=amountIn, "not enought DAI");
         balanceDAI-=amountIn;
-        balanceWETH+=amountIn/2;
-        return amountIn/2 + 2;
+        balanceWETH+=amountIn/2-20;
+        return amountIn/2 - 20;
     } 
 
 
